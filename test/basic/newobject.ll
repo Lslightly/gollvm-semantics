@@ -1,0 +1,1 @@
+%1 = call @newobject(null, %type)
