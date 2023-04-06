@@ -2,8 +2,9 @@
 
 module LLVM-SYSCALLS-SYNTAX
     imports SORT-K
+    imports INT
 
-    syntax KLabel ::= syscallHandler(K) [function]
+    syntax KLabel ::= syscallHandler(Int) [function]
 
     syntax KLabel ::= "'sys-write"
     rule syscallHandler(4) => 'sys-write

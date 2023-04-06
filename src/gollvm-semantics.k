@@ -1,9 +1,9 @@
-requires "llvm-syntax.k"
-requires "llvm-abstractsyntax.k"
-requires "llvm-settings.k"
+requires "gollvm-syntax.k"
+// requires "llvm-abstractsyntax.k"
+// requires "llvm-settings.k"
 // requires "llvm-helpers.k"
-requires "llvm-standard-library-syntax.k"
-requires "llvm-syscalls-syntax.k"
+// requires "llvm-standard-library-syntax.k"
+// requires "llvm-syscalls-syntax.k"
 
 // requires "llvm-preprocessing.k"
 // requires "llvm-clean-tree.k"
@@ -19,12 +19,12 @@ requires "llvm-syscalls-syntax.k"
 
 requires "gollvm-configuration.k"
 module GOLLVM-SEMANTICS
-    imports LLVM-SYNTAX
-    imports LLVM-ABSTRACTSYNTAX
-    imports LLVM-SETTINGS
+    imports GOLLVM-SYNTAX
+    // imports LLVM-ABSTRACTSYNTAX
+    // imports LLVM-SETTINGS
     // imports LLVM-HELPERS
-    imports LLVM-STANDARD-LIBRARY-SYNTAX
-    imports LLVM-SYSCALLS-SYNTAX
+    // imports LLVM-STANDARD-LIBRARY-SYNTAX
+    // imports LLVM-SYSCALLS-SYNTAX
 
     // imports LLVM-PREPROCESSING
     // imports LLVM-CLEAN-TREE

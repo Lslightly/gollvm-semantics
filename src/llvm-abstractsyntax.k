@@ -1,11 +1,15 @@
 //
-requires "llvm-syntax.k"
+requires "./llvm-syntax.k"
 
 module LLVM-ABSTRACTSYNTAX
-    imports SORT-K
-    imports KCELLS
+    imports INT
+    imports STRING
+    imports LIST
+    imports SET
     imports MAP
     imports LLVM-SYNTAX
+    imports KCELLS
+    imports DOMAINS
 
     syntax KResult ::= Int | String //| Floating
                       | Loc
@@ -41,17 +45,17 @@ module LLVM-ABSTRACTSYNTAX
     syntax ArgListResult ::= "vaListType"
     syntax ArgList ::= ArgListResult
     syntax KResult ::= ArgListResult
-    rule 'vaArgs(.KList) => vaListType
+    rule #vaArgs(.KList) => vaListType
 
     syntax KItem ::= vaListCal(K, K, K) [strict]//type, loc, value
     syntax KResult ::= TypeResult
     syntax KResult ::= value(K, K) //type, value
     syntax KResult ::= flagType(K, K) //flags, type
-    syntax Element ::= val(K) [strict]
+    syntax Element ::= val(KItem) [strict]
     syntax ElementResult ::= valValue(K)
     syntax Element ::= ElementResult
     syntax KResult ::= ElementResult
-    rule val(K:KResult) => valValue(K) [structural]
+    rule val(R) => valValue(R) [structural]
 
     syntax KItem ::= "emptyHOLE"
     syntax KItem ::= instNumInfo(Int, K, K)
@@ -75,30 +79,29 @@ module LLVM-ABSTRACTSYNTAX
     syntax Int ::= lengthOfList(ElemList) [function]
 
     rule lengthOfList(.ElemList) => 0
-    rule lengthOfList(val(K:K),L:ElemList) => 1 +Int lengthOfList(L)
-    rule lengthOfList(valValue(K:K),L:ElemList) => 1 +Int lengthOfList(L)
+    rule lengthOfList(E:Element, L:ElemList) => 1 +Int lengthOfList(L)
 
     syntax Int ::= lengthOfTypeList(TypeList) [function]
     rule lengthOfTypeList(.TypeList) => 0
     rule lengthOfTypeList(T:Type, Ts:TypeList) => 1 +Int lengthOfTypeList(Ts)
 
-    syntax KItem ::= elemListToK(ElemList) [function]
+    syntax K ::= elemListToK(ElemList) [function]
 
-    rule elemListToK(.ElemList) => .K
-    rule elemListToK(val(K:K), L:ElemList) => K ~> elemListToK(L)
-    rule elemListToK(valValue(K:K), L:ElemList) => K ~> elemListToK(L)
+    rule elemListToK(.ElemList) => .
+    rule elemListToK(val(V):Element, L:ElemList) => V ~> elemListToK(L)
+    rule elemListToK(valValue(V):Element, L:ElemList) => V ~> elemListToK(L)
 
-    syntax KItem ::= instructionListToK(InstructionList) [function]
+    syntax K ::= instructionListToK(InstructionList) [function]
 
-    rule instructionListToK(.InstructionList) => .K
-    rule instructionListToK(K:Instruction L:Instruction)
-                             => K ~> instructionListToK(L)
+    rule instructionListToK(.InstructionList) => .
+    rule instructionListToK(I:Instruction L:InstructionList)
+                             => I ~> instructionListToK(L)
 
     syntax List ::= elemListToList(ElemList) [function]
 
     rule elemListToList(.ElemList) => .List
-    rule elemListToList(valValue(K:K), L:ElemList) => ListItem(K) elemListToList(L)
-    rule elemListToList(val(K:K), L:ElemList) => ListItem(K) elemListToList(L)
+    rule elemListToList(valValue(V):Element, L:ElemList) => ListItem(V) elemListToList(L)
+    rule elemListToList(val(V):Element, L:ElemList) => ListItem(V) elemListToList(L)
 
     //parsing string in LLVM to byte list
     syntax KItem ::= doubleList(RetAttrs, FuncAttrs)
@@ -111,63 +114,64 @@ module LLVM-ABSTRACTSYNTAX
          requires N <Int lengthString(S)
 
     syntax Bool ::= isValidCharHex(Int) [function]
-    rule isValidCharHex(A:Int) => true
+    rule isValidCharHex(A) => true
          requires (A >=Int 48 andBool A <=Int 57)
              orBool (A >=Int 97 andBool A <=Int 102)
              orBool (A >=Int 65 andBool A <=Int 70)
-    rule isValidCharHex(A:Int) => false [owise]
+    rule isValidCharHex(A) => false [owise]
 
     syntax Int ::= hexCharToInt(Int) [function]
     rule hexCharToInt(A:Int) => A -Int 48
           requires (A >=Int 48 andBool A <=Int 57)
     rule hexCharToInt(A:Int) => 10
-          requires A ==K 97 orBool A ==K 65
+          requires A ==Int 97 orBool A ==K 65
     rule hexCharToInt(A:Int) => 11
-          requires A ==K 98 orBool A ==K 66
+          requires A ==Int 98 orBool A ==K 66
     rule hexCharToInt(A:Int) => 12
-          requires A ==K 99 orBool A ==K 67
-    rule hexCharToInt(A:Int) => 13
-          requires A ==K 100 orBool A ==K 68
-    rule hexCharToInt(A:Int) => 14
-          requires A ==K 101 orBool A ==K 69
-    rule hexCharToInt(A:Int) => 15
-          requires A ==K 102 orBool A ==K 70
+          requires A ==Int 99 orBool A ==K 67
+    rule hexCharToInt(A) => 13
+          requires A ==Int 100 orBool A ==K 68
+    rule hexCharToInt(A) => 14
+          requires A ==Int 101 orBool A ==K 69
+    rule hexCharToInt(A) => 15
+          requires A ==Int 102 orBool A ==K 70
 
     syntax Int ::= makeLowerCase(Int) [function]
-    rule makeLowerCase(A:Int) => A +Int 32
+    rule makeLowerCase(A) => A +Int 32
          requires (A >=Int 65 andBool A <=Int 90)
-    rule makeLowerCase(A:Int) => A [owise]
+    rule makeLowerCase(A) => A [owise]
 
     syntax KItem ::= findSlashList(List)  [function]
     rule findSlashList(.List) => badValue
-    rule findSlashList(ListItem(92) L:List) => charListResult(ListItem(92), L)
-    rule findSlashList(ListItem(110) L:List) => charListResult(ListItem(10), L)
-    rule findSlashList(ListItem(34) L:List) => charListResult(ListItem(34), L)
-    rule findSlashList(ListItem(116) L:List) => charListResult(ListItem(9), L)
-    rule findSlashList(ListItem(114) L:List) => charListResult(ListItem(13), L)
-    rule findSlashList(ListItem(A:Int) ListItem(B:Int) L:List)
+    rule findSlashList(ListItem(92):ListItem L:List) => charListResult(ListItem(92), L)
+    rule findSlashList(ListItem(110):ListItem L:List) => charListResult(ListItem(10), L)
+    rule findSlashList(ListItem(34):ListItem L:List) => charListResult(ListItem(34), L)
+    rule findSlashList(ListItem(116):ListItem L:List) => charListResult(ListItem(9), L)
+    rule findSlashList(ListItem(114):ListItem L:List) => charListResult(ListItem(13), L)
+    rule findSlashList(ListItem(A:Int) ListItem(B:Int) L)
                   => charListResult(ListItem(hexCharToInt(A) *Int 16 +Int hexCharToInt(B)), L)
          requires isValidCharHex(A) andBool isValidCharHex(B)
-    rule findSlashList(L:List) => badValue [owise]
+    rule findSlashList(L) => badValue [owise]
 
     syntax List ::= charListFilter(List)  [function]
                   | charListFilterAux(K)  [function]
     rule charListFilter(.List) => .List
-    rule charListFilter(ListItem(X:Int) L:List)
+    rule charListFilter(ListItem(X:Int) L)
            => ListItem(X) charListFilter(L)
          requires X =/=Int 92
-    rule charListFilter(ListItem(92) L:List)
+    rule charListFilter(ListItem(92) L)
           => charListFilterAux(findSlashList(L))
     rule charListFilterAux(badValue) => ListItem(badValue)
-    rule charListFilterAux(charListResult(L:List, L':List))
+    rule charListFilterAux(charListResult(L, L'))
                 => L charListFilter(L')
 
     syntax ElemList ::= parseCharListToOperands(List) [function]
     rule parseCharListToOperands(.List) => .ElemList
-    rule parseCharListToOperands(ListItem(A:Int) L:List)
+    rule parseCharListToOperands(ListItem(A:Int) L)
           => val(operand(integerType(8), A)), parseCharListToOperands(L)
 
     syntax ElemList ::= parseStringToList(StringName) [function]
+    syntax String ::= #tokenToString(StringName) [function, total, hook(STRING.token2string)]
     rule parseStringToList(X:StringName) => 
               parseCharListToOperands(charListFilter(stringToCharList(
               substrString(#tokenToString(X), 1, lengthString(#tokenToString(X)) -Int 1),0)))
@@ -175,19 +179,19 @@ module LLVM-ABSTRACTSYNTAX
     //parse concrete var to AST var
     syntax KItem ::= addNameToString(K) [function]
 
-    rule addNameToString(val(typeOperand(T:K, V:K)),Es:ElemList)
+    rule addNameToString(val(typeOperand(T, V)),Es:ElemList)
                 => val(typeOperand(T, addNameToString(V))), addNameToString(Es)
     rule addNameToString(.ElemList) => .ElemList
-    rule addNameToString(Var:LocalName) => name(localVar, substrString(#tokenToString(Var),1
+    rule addNameToString(Var:>LocalName) => name(localVar, substrString(#tokenToString(Var),1
                           ,lengthString(#tokenToString(Var))))
-    rule addNameToString(Var:GlobalName) => name(globalVar, substrString(#tokenToString(Var),1
+    rule addNameToString(Var:>GlobalName) => name(globalVar, substrString(#tokenToString(Var),1
                           ,lengthString(#tokenToString(Var))))
-    rule addNameToString(Var:LabelStringConstant) => name(localVar, substrString(#tokenToString(Var),0
+    rule addNameToString(Var:>LabelStringConstant) => name(localVar, substrString(#tokenToString(Var),0
                           ,lengthString(#tokenToString(Var)) -Int 1))
-    rule addNameToString(< R:ReturnedVal >) => vector(formElemList(R))
-    rule addNameToString([ R:ReturnedVal ]) => array(formElemList(R))
-    rule addNameToString({ R:ReturnedVal }) => constantStruct(formElemList(R))
-    rule addNameToString(< { R:ReturnedVal } >) => packedStruct(formElemList(R))
+    rule addNameToString(< R:>ReturnedVal >) => vector(formElemList(R))
+    rule addNameToString([ R:>ReturnedVal ]) => array(formElemList(R))
+    rule addNameToString({ R:>ReturnedVal }) => constantStruct(formElemList(R))
+    rule addNameToString(< { R:>ReturnedVal } >) => packedStruct(formElemList(R))
     rule addNameToString('constCast(C:CastOps,, T1:Type V:ValueRef,, T2:Type))
             => constCastAST(C, T1, addNameToString(V), T2)
     rule addNameToString('constBin(C:BinaryOps,,
