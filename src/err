@@ -1,0 +1,3 @@
+[Warning] Compiler: Could not find main syntax module with name
+GOLLVM-SEMANTICS-SYNTAX in definition.  Use --syntax-module to specify one.
+Using GOLLVM-SEMANTICS as default.

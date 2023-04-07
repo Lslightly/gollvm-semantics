@@ -1,19 +1,44 @@
-module GOLLVM-SEMANTICS
+requires "gollvm-syntax.k"
+// requires "llvm-abstractsyntax.k"
+// requires "llvm-settings.k"
+// requires "llvm-helpers.k"
+// requires "llvm-standard-library-syntax.k"
+// requires "llvm-syscalls-syntax.k"
 
-    /*
-        k表示程序
-        val2heap表示Value -> Heap位置的映射
-        val2stack表示Value -> Stack位置的映射
-        val2type表示Value -> Type的映射
-        fstack为活动记录栈
-    */
-    configuration
-    <T>
-        <k>$PGM</k>
-        <val2heap> .Map </val2heap>
-        <val2stack> .Map </val2stack>
-        <val2type> .Map </val2type>
-        <fstack> .List </fstack>
-    </T>
+// requires "llvm-preprocessing.k"
+// requires "llvm-clean-tree.k"
+// requires "llvm-registers.k"
+// requires "llvm-branching.k"
+// requires "llvm-phi.k"
+// requires "llvm-selection.k"
+// requires "llvm-start-and-stop.k"
+
+// requires "llvm-normalizing.k"
+// requires "llvm-declarations.k"
+// requires "llvm-globals.k"
+
+requires "gollvm-configuration.k"
+module GOLLVM-SEMANTICS
+    imports GOLLVM-SYNTAX
+    // imports LLVM-ABSTRACTSYNTAX
+    // imports LLVM-SETTINGS
+    // imports LLVM-HELPERS
+    // imports LLVM-STANDARD-LIBRARY-SYNTAX
+    // imports LLVM-SYSCALLS-SYNTAX
+
+    // imports LLVM-PREPROCESSING
+    // imports LLVM-CLEAN-TREE
+    // imports LLVM-REGISTERS
+    // imports LLVM-BRANCHING
+    // imports LLVM-PHI
+    // imports LLVM-SELECTION
+    // imports LLVM-START-AND-STOP
+
+    // imports LLVM-NORMALIZING
+    // imports LLVM-DECLARATIONS
+    // imports LLVM-GLOBALS
+
+    imports GOLLVM-CONFIGURATION
+
 
 endmodule
