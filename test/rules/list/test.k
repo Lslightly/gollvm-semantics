@@ -1,7 +1,7 @@
 module TEST
-    imports DOMAINS
+    imports BASIC-K
+    imports INT
 
-    syntax Test ::= "a" | "b" [klabel(#b), onlyLabel, symbol]
     syntax Element ::= val(KItem) [strict] | ElementResult
     syntax ElementResult ::= valValue(K)
     syntax KResult ::= ElementResult
@@ -10,7 +10,6 @@ module TEST
     syntax ElemList ::= List{Element,","} [strict]
     syntax Int ::= lengthOfList(ElemList) [function]
 
-    rule #b(.KList) => 0
     rule lengthOfList (.ElemList) => 0
     rule lengthOfList (E:Element, L:ElemList) => 1 +Int lengthOfList (L)
 

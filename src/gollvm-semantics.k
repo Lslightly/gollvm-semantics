@@ -1,5 +1,6 @@
 requires "gollvm-syntax.k"
-// requires "llvm-abstractsyntax.k"
+// requires "gollvm-abstractsyntax.k"
+// requires "test.k"
 // requires "llvm-settings.k"
 // requires "llvm-helpers.k"
 // requires "llvm-standard-library-syntax.k"
@@ -20,7 +21,8 @@ requires "gollvm-syntax.k"
 requires "gollvm-configuration.k"
 module GOLLVM-SEMANTICS
     imports GOLLVM-SYNTAX
-    // imports LLVM-ABSTRACTSYNTAX
+    // imports TEST
+    // imports GOLLVM-ABSTRACTSYNTAX
     // imports LLVM-SETTINGS
     // imports LLVM-HELPERS
     // imports LLVM-STANDARD-LIBRARY-SYNTAX

@@ -3,14 +3,9 @@
 */
 module GOLLVM-SYNTAX
     imports INT
-    imports BOOL
-    imports STRING
+    imports STRING-SYNTAX
     imports BASIC-K
-    imports LIST
-    imports K-IO
-    imports MAP
-    imports SET
-    imports K-EQUAL
+    imports BOOL
 
     /*@
       Define syntactic constructors for non-keyword tokens. 
@@ -18,7 +13,6 @@ module GOLLVM-SYNTAX
       Negative numbers may be used with integer types.
     */
     syntax HexConstant ::= r"[us]?0x[KMLH]?[0-9a-fA-F]*" [token]
-    syntax UnsignedInt ::= r"[0-9][0-9]*" [token]
 
     /*@
       Floating point constants use standard decimal notation (e.g. 123.421),
@@ -35,9 +29,7 @@ module GOLLVM-SYNTAX
                 // [regex("NaN([fFdD]|([pP][0-9]+[xX][0-9]+))?"), token]
     //syntax Floating ::= "NaN" | "Infinity"
     syntax FpVal ::= HexConstant | Floating
-    syntax StringName ::= r"\\\"[^\\\"]*\\\"" [token]
-    //syntax StringName ::= String
-    syntax Strings ::= List{StringName,","}
+    syntax Strings ::= List{String,","}
 
     /*@
       LLVM identifiers come in two basic types: global and local.
@@ -72,9 +64,9 @@ module GOLLVM-SYNTAX
     syntax GlobalName ::= GlobalVar | GlobalValID
     syntax GlobalAssign ::= GlobalName "="
 
-    //Label names are the ids for entry basic blocks.
-    syntax LabelStringConstant ::= r"[a-zA-Z\\.\\_\\-\\$0-9]*\\:" [token]
-    syntax LabelStringConstant ::= r"\\\"[^\\\"]*\\\"\\:" [token]
+    // Label names are the ids for entry basic blocks.
+    syntax LabelStringConstant ::= r"[a-zA-Z\\.\\_\\-\\$0-9]*" [token]
+    syntax LabelString ::= LabelStringConstant | String
 
     //define metadata variables, attribute group ids and comdat variables.
     syntax MetadataVar ::= r"\\![a-zA-Z\\.\\_\\-\\$\\\\][0-9a-zA-Z\\.\\_\\-\\$\\\\]*"
@@ -367,7 +359,7 @@ module GOLLVM-SYNTAX
                             | "msp430_intrcc" | "ptx_kernel" | "ptx_device"
                             | "spir_func" | "spir_kernel" | "x86_64_sysvcc"
                             | "x86_64_win64cc" | "webkit_jscc" | "anyregcc"
-                            | "preserve_mostcc" | "preserve_allcc" | "cc" UnsignedInt
+                            | "preserve_mostcc" | "preserve_allcc" | "cc" Int
                             | "" [klabel(#callingConvEmpty)]
 
 
@@ -406,6 +398,7 @@ module GOLLVM-SYNTAX
                      | "zeroext" [klabel(#zeroextOfReturn)]
                      | "signext"  [klabel(#signextOfReturn)]
                      | "noalias" [klabel(#noaliasOfReturn)]
+                     | "nonnull" [klabel(#nonnullOfReturn)]
     syntax RetAttrs ::= List{RetAttr," "}
 
     syntax ParamAttr ::= Align | "sret" | "nocapture" | "byval"
@@ -416,6 +409,7 @@ module GOLLVM-SYNTAX
                        | "zeroext" [klabel(#zeroextOfParam)]
                        | "signext"  [klabel(#signextOfParam)]
                        | "noalias" [klabel(#noaliasOfParam)]
+                       | "nonnull" [klabel(#nonnullOfParam)]
     syntax ParamAttrs ::= List{ParamAttr," "}
     syntax KItem ::= ParamAttrs
 
@@ -433,11 +427,16 @@ module GOLLVM-SYNTAX
                       | "sanitize_address" | "sanitize_memory"
                       | "readonly" [klabel(#readonlyOfComm)]
                       | "readnone" [klabel(#readnoneOfComm)]
-                      | StringName "=" StringName | AttributeGroupId
-    syntax FuncAttr ::= CommAttr | alignstack(UnsignedInt)
+                      | String "=" String | AttributeGroupId
+                      //  gollvm
+                      | "nofree"
+                      | "argmemonly"
+                      | "mustprogress"
+                      | "willreturn"
+    syntax FuncAttr ::= CommAttr | alignstack(Int)
     syntax FuncAttrs ::= List{FuncAttr," "}
-    syntax GroupAttr ::= CommAttr | StringName | "alignstack" "=" UnsignedInt
-                       | "align" "=" UnsignedInt
+    syntax GroupAttr ::= CommAttr | String | "alignstack" "=" Int
+                       | "align" "=" Int
     syntax GroupAttrs ::= List{GroupAttr," "} [klabel(#groupAttrList)]
 
 
@@ -473,7 +472,7 @@ module GOLLVM-SYNTAX
       is restricted to generating machine code which can interoperate with a
       collector provided externally.
     */
-    syntax OptGC ::= "gc" StringName | "" [klabel(#gcEmpty)]
+    syntax OptGC ::= "gc" String | "" [klabel(#gcEmpty)]
 
 
     /*@
@@ -509,7 +508,7 @@ module GOLLVM-SYNTAX
       If the target supports it, it will emit functions to the section specified. 
       Additionally, the function can be placed in a COMDAT.
     */
-    syntax OptSection ::= "section" StringName | "" [klabel(#sectionEmpty)]
+    syntax OptSection ::= "section" String | "" [klabel(#sectionEmpty)]
 
 
     /*@
@@ -530,17 +529,17 @@ module GOLLVM-SYNTAX
       specified, the function is forced to have at least that much alignment.
       All alignments must be a power of 2.
     */
-    syntax Align ::= "align" UnsignedInt         [klabel(#align)]
+    syntax Align ::= "align" Int         [klabel(#align)]
     syntax OptAlign ::= Align | "" [klabel(#alignEmpty)]
     syntax OptSectionComdatAndAlign ::= "" [klabel(#sectionComdatAndAlignEmpty)]
-                                | "," "section" StringName
+                                | "," "section" String
                                 | "," Align
                                 | "," Comdat
                                 | "," Comdat "," Align
-                                | "," "section" StringName "," Align
-                                | "," Align "," "section" StringName
-                                | "," "section" StringName "," Comdat
-                                | "," "section" StringName "," Comdat "," Align
+                                | "," "section" String "," Align
+                                | "," Align "," "section" String
+                                | "," "section" String "," Comdat
+                                | "," "section" String "," Comdat "," Align
 
 
     /*@
@@ -551,7 +550,7 @@ module GOLLVM-SYNTAX
       If the unnamed_addr attribute is given for a function, the address
       is known to not be significant and two identical functions can be merged.
     */
-    syntax OptAddrSpace ::= addrspace(UnsignedInt) | "" [klabel(#addrEmpty)]
+    syntax OptAddrSpace ::= addrspace(Int) | "" [klabel(#addrEmpty)]
     syntax OptUnnamedAddr ::= "unnamed_addr" | "local_unnamed_addr"
                             | "" [klabel(#unnamedEmpty)]
 
@@ -588,7 +587,7 @@ module GOLLVM-SYNTAX
     syntax OptInteldialect ::= "inteldialect"
                              | "" [klabel(#inteldialectEmpty)]
     //define a AsmBlock to be a string constant.
-    syntax AsmBlock ::= StringName
+    syntax AsmBlock ::= String
 
     /*@
       A variable may be defined as thread_local, which means that it will not
@@ -695,8 +694,8 @@ module GOLLVM-SYNTAX
                          | PrimType
                          | Type OptAddrSpace "*"              [klabel(#pointerType), strict(1)]
                          | Type "(" ArgList ")"               [klabel(#functionType)]
-                         | "[" UnsignedInt "x" Type "]"
-                         | "<" UnsignedInt "x" Type ">"
+                         | "[" Int "x" Type "]"
+                         | "<" Int "x" Type ">"
                          | "{" TypeList "}"                   [klabel(#structType), strict]
                          | "<" "{" TypeList "}" ">"           [klabel(#packedStructType), strict]
     syntax Type ::= VoidType | NonVoidType
@@ -718,7 +717,7 @@ module GOLLVM-SYNTAX
       value if %op1 is not a multiple of %op2 (as such,
       “((a udiv exact b) mul b) == a”).
     */
-    syntax DivConstructors ::= "udiv" | "sdiv" | "lshr" | "ashr"
+    syntax DivConstructors ::= "udiv" | "sdiv" | "lshr" | "ashr" 
 
 
     /*@
@@ -890,7 +889,7 @@ module GOLLVM-SYNTAX
                            | "[" ReturnedVal "]"
                            | "{" ReturnedVal "}"
                            | "<" "{" ReturnedVal "}" ">"
-                           | "c" StringName
+                           | "c" String
                            | "asm" OptSideEffect OptAlignstack OptInteldialect
                              String "," String
                            | MetadataValueInt
@@ -898,8 +897,8 @@ module GOLLVM-SYNTAX
                            | "!" "(" IndexList ")"
                            | "!" "{" MetadataValues "}"
     //define the values that appear in a metadata list
-    syntax MetadataValueInt ::= "!" UnsignedInt [klabel(#metaValueInVarForm)]
-    syntax MetadataValueString ::= "!" StringName
+    syntax MetadataValueInt ::= "!" Int [klabel(#metaValueInVarForm)]
+    syntax MetadataValueString ::= "!" String
     syntax MetadataValue ::= MetadataValueInt
                            | MetadataValueString
                            | Index
@@ -914,7 +913,7 @@ module GOLLVM-SYNTAX
       not have side effects (e.g. load and call are not supported).
       The following is the syntax for constant expressions.
     */
-    syntax ConstantIndexList ::= "," UnsignedInt | "," UnsignedInt ConstantIndexList
+    syntax ConstantIndexList ::= "," Int | "," Int ConstantIndexList
     syntax ConstExpr ::= CastOps "(" ResolvedVal "to" Type ")"              [klabel(#constCast)]
                       | BinaryOps "(" ResolvedVal "," ResolvedVal ")"       [klabel(#constBin)]
                       | LogicalOps "(" ResolvedVal "," ResolvedVal ")"      [klabel(#constLogic)]
@@ -1032,7 +1031,7 @@ module GOLLVM-SYNTAX
     //define the metadata in the tail of all instructions.
     syntax InstructionMetadata ::= MetadataVar MetadataValueInt
                                  | MetadataVar "!" "{" MetadataValues "}"
-    syntax InstructionMetadatas ::= "" [klabel(#.InstructionMetadatas)]
+    syntax InstructionMetadatas ::= "" [klabel(.InstructionMetadatas)]
                                  | "," InstructionMetadata InstructionMetadatas
 
     //define parameter lists. It is a syntactic convince to define it like this.
@@ -1044,8 +1043,8 @@ module GOLLVM-SYNTAX
       The ‘phi‘ instruction takes a list of pairs as arguments,
       with one pair for each predecessor basic block of the current block.
     */
-    syntax PHIList ::= "[" ValueRef "," ValueRef "]"
-                     | "[" ValueRef "," ValueRef "]" "," PHIList
+    syntax ValuePair ::= "[" ValueRef "," ValueRef "]"
+    syntax PHIList ::= NeList{ValuePair, ","}
 
     /*@
       Define jump tables for the switch instruction.
@@ -1156,8 +1155,8 @@ module GOLLVM-SYNTAX
                   that specifies how data is to be laid out in memory.
       triple: A module may specify a target triple string that describes the target host.
     */
-    syntax TargetDefinition ::= "triple" "=" StringName
-                              | "datalayout" "=" StringName
+    syntax TargetDefinition ::= "triple" "=" String
+                              | "datalayout" "=" String
 
     //Define libraries definitions for the values of the definition of deplibs.
     syntax LibrariesDefinition ::= "[" Strings "]" [klabel(#deplibsValues)]
@@ -1193,7 +1192,7 @@ module GOLLVM-SYNTAX
       label, using the next value from the same counter as used for unnamed temporaries.
     */
     syntax BasicBlock ::= InstructionList BBTerminatorInstruction
-                        | LabelStringConstant InstructionList BBTerminatorInstruction
+                        | LabelString ":" InstructionList BBTerminatorInstruction
     syntax BasicBlockList ::= BasicBlock BasicBlockList | BasicBlock
 
     /*@
@@ -1208,6 +1207,7 @@ module GOLLVM-SYNTAX
     */
     syntax Function ::= OptLinkage OptVisibilityStyle OptDllStorageClass FunctionHeader "{" BasicBlockList "}"
 
+    syntax SourceFileName ::= "source_filename" "=" String
 
     /*@
       LLVM programs are composed of Module‘s, each of which is a translation unit
@@ -1245,10 +1245,11 @@ module GOLLVM-SYNTAX
                           OptThreadLocal OptUnnamedAddr "alias" AliaseeRef
                         | "target" TargetDefinition
                         | "deplibs" "=" LibrariesDefinition
-                        | "!" UnsignedInt "=" OptDistinct "!" "{" MetadataValues "}"
+                        | "!" Int "=" OptDistinct "!" "{" MetadataValues "}"
                         | MetadataVar "=" "!" "{" MetadataInts "}"
                         | ComdatVar "=" "comdat" SelectionKind
                         | "attributes" AttributeGroupId "=" "{" GroupAttrs "}"
+                        | SourceFileName
 
     syntax Module ::= List{Definition," "} [klabel(#defList)]
     syntax KItem ::= Module
