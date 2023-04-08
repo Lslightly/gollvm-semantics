@@ -94,7 +94,8 @@ module GOLLVM-SYNTAX
       is a poison value if %op1 is not a multiple of %op2 (as such,
       “((a udiv exact b) mul b) == a”).
     */
-    syntax OptExact ::= "exact" | "" [klabel(#exactEmpty)]
+    syntax Exact ::= "exact"
+    syntax OptExact ::= List{Exact, " "}
 
 
     /*@
@@ -106,7 +107,8 @@ module GOLLVM-SYNTAX
       operations. This is not Java’s “volatile” and has no cross-thread
       synchronization behavior.
     */
-    syntax OptVolatile ::= "volatile" | "" [klabel(#volatileEmpty)]
+    syntax Volatile ::= "volatile"
+    syntax OptVolatile ::= List{Volatile, " "}
 
     /*@
       If the cmpxchg operation is marked as weak then a spurious
@@ -115,8 +117,8 @@ module GOLLVM-SYNTAX
 
 
     */
-    syntax OptWeak ::= "weak" [klabel(#weakMemory)]
-                         | "" [klabel(#weakEmpty)]
+    syntax Weak ::= "weak" [klabel(#weakMemory)]
+    syntax OptWeak ::= List{Weak, ","}
 
     /*@
       If the load is marked as atomic, it takes an extra ordering and optional
@@ -472,7 +474,7 @@ module GOLLVM-SYNTAX
       is restricted to generating machine code which can interoperate with a
       collector provided externally.
     */
-    syntax OptGC ::= "gc" String | "" [klabel(#gcEmpty)]
+    // syntax OptGC ::= "gc" String | "" [klabel(#gcEmpty)]
 
 
     /*@
@@ -482,7 +484,7 @@ module GOLLVM-SYNTAX
       with specific functions and make it available through the function pointer
       while still allowing the function pointer to be called.
     */
-    syntax OptPrefix ::= "prefix" Type ValueRef | "" [klabel(#prefixEmpty)]
+    // syntax OptPrefix ::= "prefix" Type ValueRef | "" [klabel(#prefixEmpty)]
 
 
     /*@
@@ -519,7 +521,7 @@ module GOLLVM-SYNTAX
       aliasee computes to, if any.
     */
     syntax Comdat ::= comdat(ComdatVar) | "comdat" [klabel(#simplifiedComdat)]
-    syntax OptComdat ::= Comdat | "" [klabel(#comdatEmpty)]
+    syntax OptComdat ::= List{Comdat, " "}
 
 
     /*@
@@ -530,9 +532,9 @@ module GOLLVM-SYNTAX
       All alignments must be a power of 2.
     */
     syntax Align ::= "align" Int         [klabel(#align)]
-    syntax OptAlign ::= Align | "" [klabel(#alignEmpty)]
-    syntax OptSectionComdatAndAlign ::= "" [klabel(#sectionComdatAndAlignEmpty)]
-                                | "," "section" String
+    syntax OptAlign ::= List{Align, " "}
+    syntax OptSectionComdatAndAlign ::= List{SectionComdatAndAlign, " "}
+    syntax SectionComdatAndAlign ::= "," "section" String
                                 | "," Align
                                 | "," Comdat
                                 | "," Comdat "," Align
@@ -550,9 +552,10 @@ module GOLLVM-SYNTAX
       If the unnamed_addr attribute is given for a function, the address
       is known to not be significant and two identical functions can be merged.
     */
-    syntax OptAddrSpace ::= addrspace(Int) | "" [klabel(#addrEmpty)]
-    syntax OptUnnamedAddr ::= "unnamed_addr" | "local_unnamed_addr"
-                            | "" [klabel(#unnamedEmpty)]
+    syntax AddrSpace ::= addrspace(Int)
+    syntax OptAddrSpace ::= List{AddrSpace, " "}
+    syntax UnnamedAddr ::= "unnamed_addr" | "local_unnamed_addr"
+    syntax OptUnnamedAddr ::= List{UnnamedAddr, " "}
 
 
     /*@
@@ -566,9 +569,11 @@ module GOLLVM-SYNTAX
       If the inbounds keyword is not present, the offsets are added to the base
       address with silently-wrapping two’s complement arithmetic.
     */
-    syntax OptInBounds ::= "inbounds" | "" [klabel(#inBoundsEmpty)]
+    syntax InBounds ::= "inbounds"
+    syntax OptInBounds ::= List{InBounds, " "}
 
-    syntax OptInRange ::= "inrange" | "" [klabel(#inRangeEmpty)]
+    syntax InRange ::= "inrange"
+    syntax OptInRange ::= List{InRange, " "}
 
     /*@
       "sideeffect", "alignstack" and "inteldialect" are attributes that are used in
@@ -582,10 +587,12 @@ module GOLLVM-SYNTAX
       ‘alignstack‘ keyword is present.
       When the ‘inteldialect‘ keyword is present, the inline asm is using the Intel dialect.
     */
-    syntax OptSideEffect ::= "sideeffect" | "" [klabel(#sideeffectEmpty)]
-    syntax OptAlignstack ::= "alignstack" | "" [klabel(#alignstackEmpty)]
-    syntax OptInteldialect ::= "inteldialect"
-                             | "" [klabel(#inteldialectEmpty)]
+    syntax SideEffect ::= "sideeffect"
+    syntax OptSideEffect ::= List{SideEffect, " "}
+    syntax Alignstack ::= "alignstack"
+    syntax OptAlignstack ::= List{Alignstack, " "}
+    syntax Inteldialect ::= "inteldialect"
+    syntax OptInteldialect ::= List{Inteldialect, " "}
     //define a AsmBlock to be a string constant.
     syntax AsmBlock ::= String
 
@@ -604,8 +611,8 @@ module GOLLVM-SYNTAX
 
       If no explicit model is given, the “general dynamic” model is used.
     */
-    syntax OptThreadLocal ::= "thread_local" "(" ThreadLocalAttr ")" | "thread_local"
-                         | "" [klabel(#threadLocalEmpty)]
+    syntax ThreadLocal ::= "thread_local" "(" ThreadLocalAttr ")" | "thread_local"
+    syntax OptThreadLocal ::= List{ThreadLocal, " "}
     syntax ThreadLocalAttr ::= "localdynamic" | "initialexec" | "localexec"
 
 
@@ -619,8 +626,8 @@ module GOLLVM-SYNTAX
       or dllexported variables. This assumption may be suppressed by marking
       the variable with externally_initialized.
     */
-    syntax OptExternallyInitialized ::= "externally_initialized"
-                                      | "" [klabel(#externallyInitEmpty)]
+    syntax ExternallyInitialized ::= "externally_initialized"
+    syntax OptExternallyInitialized ::= List{ExternallyInitialized, " "}
 
 
     /*@
@@ -1164,10 +1171,8 @@ module GOLLVM-SYNTAX
     //Define argument lists for the function header.
     syntax ArgType ::= Type ParamAttrs           [klabel(#argTypeTwo)]
                       | Type ParamAttrs LocalVar [klabel(#argTypeThree)]
-    syntax ArgList ::= "" [klabel(#argListUnit)]
-                     | "..." [klabel(#vaArgs), function, symbol]
-                     | ArgType             
-                     | ArgType "," ArgList [klabel(#argTypeCon)]
+                      | "..." [klabel(#vaArgs), symbol]
+    syntax ArgList ::= List{ArgType, ","}
 
     /*@
       LLVM function declarations consist of the “declare” keyword, an optional
@@ -1177,9 +1182,14 @@ module GOLLVM-SYNTAX
       empty list of arguments, an optional alignment, an optional garbage collector name,
       an optional prefix, and an optional prologue.
     */
-    syntax FunctionHeader ::= OptCallingConv RetAttrs Type GlobalName
-                               "(" ArgList ")" OptUnnamedAddr FuncAttrs OptSection
-                                OptComdat OptAlign OptGC OptPrefix OptPrologue
+    syntax FunctionHeaderPrefix ::= OptCallingConv RetAttrs
+    syntax FunctionHeaderSuffix ::= OptUnnamedAddr FuncAttrs OptSection
+                                OptComdat OptAlign 
+                                // OptGC
+                                // OptPrefix 
+                                // OptPrologue
+    syntax FunctionHeader ::= FunctionHeaderPrefix Type GlobalName
+                               "(" ArgList ")" FunctionHeaderSuffix
     syntax FunctionProto ::= ExternalLinkage OptVisibilityStyle FunctionHeader
                            | OptDllStorageClass OptVisibilityStyle FunctionHeader
 
@@ -1193,7 +1203,7 @@ module GOLLVM-SYNTAX
     */
     syntax BasicBlock ::= InstructionList BBTerminatorInstruction
                         | LabelString ":" InstructionList BBTerminatorInstruction
-    syntax BasicBlockList ::= BasicBlock BasicBlockList | BasicBlock
+    syntax BasicBlockList ::= NeList{BasicBlock, ""}
 
     /*@
       LLVM function definitions consist of the “define” keyword, an optional linkage
@@ -1205,7 +1215,8 @@ module GOLLVM-SYNTAX
       an optional prefix, an optional prologue, an opening curly brace, a list of basic blocks,
       and a closing curly brace.
     */
-    syntax Function ::= OptLinkage OptVisibilityStyle OptDllStorageClass FunctionHeader "{" BasicBlockList "}"
+    syntax FunctionPrefix ::= OptLinkage OptVisibilityStyle OptDllStorageClass
+    syntax Function ::= FunctionPrefix FunctionHeader "{" BasicBlockList "}"
 
     syntax SourceFileName ::= "source_filename" "=" String
 
