@@ -3,6 +3,7 @@ requires "gollvm-configuration.k"
 
 module GOLLVM-STATIC-SYNTAX
     imports GOLLVM-SYNTAX
+    syntax KItem ::= startBlock(GlobalName, BasicBlock)
     syntax KItem ::= fn2Blocks(GlobalName, BasicBlockList)
     syntax KItem ::= fnBlock(GlobalName, BasicBlock)
     syntax KItem ::= fnBlock2Insts(GlobalName, LabelString, InstructionList)
@@ -16,7 +17,9 @@ module GOLLVM-STATIC
     imports GOLLVM-CONFIGURATION
 
     //  function definition
-    rule <k> define _:FunctionPrefix _:FunctionHeaderPrefix T:Type Name:GlobalName ( Params:ArgList ) _:FunctionHeaderSuffix { Blocks:BasicBlockList } => fn2Blocks (Name, Blocks) ... </k>
+    rule <k> define _:FunctionPrefix _:FunctionHeaderPrefix T:Type Name:GlobalName ( Params:ArgList ) _:FunctionHeaderSuffix { StartBlock:BasicBlock Blocks:BasicBlockList }
+    =>
+    startBlock(Name, StartBlock) ~> fn2Blocks (Name, StartBlock Blocks) ... </k>
         <functions>
             (
                 .Bag => <function>
@@ -27,6 +30,20 @@ module GOLLVM-STATIC
                         </function>
             ) ...
         </functions>
+    //  start block
+    rule <k> startBlock (Name, L:LabelString : _:InstructionList _:BBTerminatorInstruction) => . ...</k>
+        <function>
+            <functionName> Name </functionName>
+            <startBlock> _ => L </startBlock>
+            ...
+        </function>
+    rule <k> startBlock (Name, _:InstructionList _:BBTerminatorInstruction) => . ...</k>
+        <function>
+            <functionName> Name </functionName>
+            <startBlock> _ => "entry" </startBlock>
+            ...
+        </function>
+
     //  block list split
     rule <k> fn2Blocks(Name:GlobalName, BB:BasicBlock BBs:BasicBlockList) => fnBlock (Name, BB) ~> fn2Blocks(Name, BBs) ...</k>
     rule <k> fn2Blocks (_:GlobalName, .BasicBlockList) => . ...</k>

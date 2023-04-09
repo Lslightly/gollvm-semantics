@@ -1,5 +1,6 @@
 requires "gollvm-syntax.k"
 requires "gollvm-static.k"
+requires "gollvm-dynamic.k"
 // requires "gollvm-abstractsyntax.k"
 // requires "test.k"
 // requires "llvm-settings.k"
@@ -23,6 +24,7 @@ requires "gollvm-configuration.k"
 module GOLLVM-SEMANTICS
     imports GOLLVM-SYNTAX
     imports GOLLVM-STATIC
+    imports GOLLVM-DYNAMIC
     // imports TEST
     // imports GOLLVM-ABSTRACTSYNTAX
     // imports LLVM-SETTINGS

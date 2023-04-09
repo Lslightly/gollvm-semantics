@@ -850,6 +850,7 @@ module GOLLVM-SYNTAX
       global variables, local valid ids and global valid ids.
      */
     syntax SymbolicValueRef ::= LocalName | GlobalName
+    syntax KItem ::= LocalName
 
 
     /*@

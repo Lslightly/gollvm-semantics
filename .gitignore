@@ -1,3 +1,4 @@
 .vscode
 *-kompiled
 .gdb_history
+.log
