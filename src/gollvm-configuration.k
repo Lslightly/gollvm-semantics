@@ -27,6 +27,7 @@ module GOLLVM-CONFIGURATION
                             <instructions> .List </instructions>
                             // BBTerminatorInstruction
                             <termInst> .K </termInst>
+                            <phiMap> .Map </phiMap>
                         </basicBlock>
                     </basicBlocks>
                 </function>
@@ -35,6 +36,7 @@ module GOLLVM-CONFIGURATION
         <dynamic>
             <control>
                 <currFunc> .K </currFunc>
+                <lastBlock> .K </lastBlock>
                 <currBlock> .K </currBlock>
                 <currInst> .K </currInst>
                 <instList> .List </instList>

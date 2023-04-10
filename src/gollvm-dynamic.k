@@ -41,6 +41,7 @@ module GOLLVM-DYNAMIC
                     <blockName> BB </blockName>
                     <instructions> InstList </instructions>
                     <termInst> TermInst </termInst>
+                    ...
                 </basicBlock>
                 ...
             </function>

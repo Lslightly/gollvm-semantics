@@ -3,11 +3,13 @@ requires "gollvm-configuration.k"
 
 module GOLLVM-STATIC-SYNTAX
     imports GOLLVM-SYNTAX
+    imports MAP
     syntax KItem ::= startBlock(GlobalName, BasicBlock)
     syntax KItem ::= fn2Blocks(GlobalName, BasicBlockList)
     syntax KItem ::= fnBlock(GlobalName, BasicBlock)
     syntax KItem ::= fnBlock2Insts(GlobalName, LabelString, InstructionList)
     syntax KItem ::= fnBlockInst(GlobalName, LabelString, Instruction)
+    syntax Map ::= collectPhis(PHIList) [function]
 endmodule
 
 
@@ -59,6 +61,7 @@ module GOLLVM-STATIC
                             <blockName>L</blockName>
                             <termInst> TermInst </termInst>
                             <instructions> .List </instructions>
+                            ...
                         </basicBlock>
             )
             ...
@@ -74,6 +77,7 @@ module GOLLVM-STATIC
                             <blockName> "entry" </blockName>
                             <termInst> TermInst </termInst>
                             <instructions> .List </instructions>
+                            ...
                         </basicBlock>
             )
             ...
@@ -84,6 +88,27 @@ module GOLLVM-STATIC
     rule <k> fnBlock2Insts (Name:GlobalName, L:LabelString, I:Instruction Is:InstructionList) 
     => fnBlockInst (Name, L, I) ~> fnBlock2Insts (Name, L:LabelString, Is:InstructionList) ...</k>
     rule <k> fnBlock2Insts (_:GlobalName, _:LabelString, .InstructionList) => . ...</k>
+
+    // phi inst
+    rule <k> fnBlockInst(Name, L, Local:LocalName = phi T:Type Pairs:PHIList Meta:InstructionMetadatas) => . ...</k>
+        <function>
+            ...
+            <functionName> Name </functionName>
+            <basicBlocks>
+                ...
+                <basicBlock>
+                    <blockName>L</blockName>
+                    <instructions> ... .List => ListItem(Local = phi T Pairs Meta)</instructions>
+                    <phiMap> MAP => MAP [ Local <- collectPhis(Pairs) ]</phiMap>
+                    ...
+                </basicBlock>
+            </basicBlocks>
+            ...
+        </function>
+    
+    // add phi pairs
+    rule collectPhis([ SrcV:ValueRef , SrcL:LabelString], Remain:PHIList) => collectPhis(Remain) [SrcL <- SrcV]
+    rule collectPhis(.PHIList) => .Map
 
     // instruction definition
     rule <k> fnBlockInst (Name, L, I:Instruction) => . ...</k>
@@ -99,7 +124,7 @@ module GOLLVM-STATIC
                 </basicBlock>
             </basicBlocks>
             ...
-        </function>
+        </function> [owise]
 
     rule <k> D:Definition M:Module => D ~> M ...</k>
     rule <k> _:Definition => . ...</k> [owise]

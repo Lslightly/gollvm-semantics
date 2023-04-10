@@ -13,10 +13,14 @@ endmodule
 module GOLLVM-DYN-INSTS-SYNTAX
     imports DYN-INSTS-INCLUDE
     imports STRING-SYNTAX
+    imports MAP
     syntax KItem ::= warn(KItem, String) | error(KItem, String)
-    syntax KItem ::= addrAlias(LocalName, Int)
     //  store(dst, Address)
     syntax KItem ::= storeAddress(LocalName, LocalName)
+
+    //  instructions
+    syntax LocalName ::= getPhiValueFromBlock(Map, LabelString) [function]
+    syntax Map ::= extractPhiMap(Map, LocalName) [function]
 endmodule
 
 module GOLLVM-DYN-INSTS
@@ -66,6 +70,13 @@ module GOLLVM-NORMAL-INSTS
         <local2Base>
             MAP => MAP [Dst <- {MAP[L1]}:>Int ==Int C2]
         </local2Base>
+    rule [Ticmpnull]: <k>
+        execInst (Dst:LocalName = icmp eq _:Type _:LocalName, null _:InstructionMetadatas)
+        =>
+        . ...  </k>
+        <local2Base>
+            MAP => MAP [Dst <- false]
+        </local2Base>
     
     rule [Tptrtoint]: <k> execInst (Dst:LocalName = ptrtoint _:Type Src:LocalName to _:Type _:InstructionMetadatas) => addrAlias(Dst, Src) ...</k>
 
@@ -81,6 +92,35 @@ module GOLLVM-NORMAL-INSTS
             Local2Base => Local2Base [ Dst <- LIST[0]]
         </local2Base>
         requires Src in_keys (Local2Base)
+    
+    rule [Tphi]: <k>
+        execInst (Dst:LocalName = phi _:Type _:PHIList _:InstructionMetadatas)
+        => addrAlias(Dst, getPhiValueFromBlock (extractPhiMap (PhiMap, Dst), LastBlock:LabelString)) ...  </k>
+        <functions>
+            ...
+            <function>
+                ...
+                <functionName>CurrFunc</functionName>
+                <basicBlocks>
+                    ...
+                    <basicBlock>
+                        ...
+                        <blockName> CurrBlock </blockName>
+                        <phiMap> PhiMap:Map </phiMap>
+                        ...
+                    </basicBlock>
+                    ...
+                </basicBlocks>
+                ...
+            </function>
+            ...
+        </functions>
+        <currFunc> CurrFunc </currFunc>
+        <lastBlock> LastBlock </lastBlock>
+        <currBlock> CurrBlock </currBlock>
+    
+    rule getPhiValueFromBlock (M:Map, L:LabelString) => {M[L]}:>LocalName
+    rule extractPhiMap (M:Map, Dst:LocalName) => {M[Dst]}:>Map
     
 endmodule
 
@@ -100,18 +140,26 @@ module GOLLVM-TERM-INSTS
         <errors> ... .List => ListItem(error(Term, "term inst not modeled"))</errors> [owise]
     rule <k> evalTermInst(ret _:VoidType _:InstructionMetadatas) => . ...</k>
 
-    rule <k> evalTermInst(br _:IntType V:ValueRef, label TrueBB:LabelString, label FalseBB:LabelString) => condbr (V, TrueBB, FalseBB) ...</k>
-    rule <k> condbr (L:LocalName, TrueBB, _) => evalBlock(TrueBB) ...</k>
+    rule [Tcondbr]: <k> evalTermInst(br _:IntType V:ValueRef, label TrueBB:LabelString, label FalseBB:LabelString _:InstructionMetadatas) => condbr (V, TrueBB, FalseBB) ...</k>
+    rule [Tcondbrtrue]: <k> condbr (L:LocalName, TrueBB, _) => evalBlock(TrueBB) ...</k>
         <local2Base>
             ...
             L |-> true
             ...
         </local2Base>
-    rule [condbr]: <k> condbr (L:LocalName, _, FalseBB) => evalBlock(FalseBB) ...</k>
+        <lastBlock> _ => CurrBB </lastBlock>
+        <currBlock> CurrBB </currBlock>
+
+    rule [Tcondbrfalse]: <k> condbr (L:LocalName, _, FalseBB) => evalBlock(FalseBB) ...</k>
         <local2Base>
             ...
             L |-> false
         </local2Base>
-    rule <k> evalTermInst(br label BB:LabelString _:InstructionMetadatas) => br(BB) ...</k>
+        <lastBlock> _ => CurrBB </lastBlock>
+        <currBlock> CurrBB </currBlock>
+
+    rule [Tbr]: <k> evalTermInst(br label BB:LabelString _:InstructionMetadatas) => br(BB) ...</k>
     rule [br]: <k> br(BB:LabelString) => evalBlock(BB) ...</k>
+        <lastBlock> _ => CurrBB </lastBlock>
+        <currBlock> CurrBB </currBlock>
 endmodule
