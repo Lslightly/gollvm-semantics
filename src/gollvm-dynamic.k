@@ -12,7 +12,7 @@ module GOLLVM-DYNAMIC
     imports K-EQUAL
 
     //  start executing @main.main
-    rule <k> CallMain() => evalFunc(@main.main) ...</k>
+    rule [start]: <k> CallMain() => evalFunc(@main.main) ...</k>
         // <function>
         //     <functionName> Fn </functionName>
         //     ...

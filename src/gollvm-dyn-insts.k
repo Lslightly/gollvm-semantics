@@ -57,17 +57,30 @@ module GOLLVM-NORMAL-INSTS
 
     rule [Tbitcast]: <k> execInst(Dst:LocalName = bitcast _:Type Src:LocalName to _:Type _:InstructionMetadatas) => addrAlias(Dst, Src) ...</k>
     
-    rule <k> execInst(Dst:LocalName = load _:OptVolatile _:Type , _:Type bitcast ( _:Type @runtime.writeBarrier to _:Type), _:Align _:InstructionMetadatas) => . ...</k>
+    rule [TloadWriteBarrier]: <k> execInst(Dst:LocalName = load _:OptVolatile _:Type , _:Type bitcast ( _:Type @runtime.writeBarrier to _:Type), _:Align _:InstructionMetadatas) => . ...</k>
         <local2Base>
             MAP => MAP [Dst <- 1]
         </local2Base>
     
-    rule <k> execInst(Dst:LocalName = icmp eq _:Type L1:LocalName , C2:Int _:InstructionMetadatas) => . ... </k>
+    rule [Ticmp]: <k> execInst(Dst:LocalName = icmp eq _:Type L1:LocalName , C2:Int _:InstructionMetadatas) => . ... </k>
         <local2Base>
             MAP => MAP [Dst <- {MAP[L1]}:>Int ==Int C2]
         </local2Base>
     
     rule [Tptrtoint]: <k> execInst (Dst:LocalName = ptrtoint _:Type Src:LocalName to _:Type _:InstructionMetadatas) => addrAlias(Dst, Src) ...</k>
+
+    rule [Tload]: <k>
+        execInst (Dst:LocalName = load _:OptVolatile _:Type , _:Type Src:LocalName, _:Align _:InstructionMetadatas)
+        => . ...  </k>
+        <mem>
+            ...
+            Local2Base[Src] |-> object(_:ObjectType, true, LIST, _:Map, _:Location)
+            ...
+        </mem>
+        <local2Base>
+            Local2Base => Local2Base [ Dst <- LIST[0]]
+        </local2Base>
+        requires Src in_keys (Local2Base)
     
 endmodule
 
@@ -94,10 +107,11 @@ module GOLLVM-TERM-INSTS
             L |-> true
             ...
         </local2Base>
-    rule <k> condbr (L:LocalName, _, FalseBB) => evalBlock(FalseBB) ...</k>
+    rule [condbr]: <k> condbr (L:LocalName, _, FalseBB) => evalBlock(FalseBB) ...</k>
         <local2Base>
             ...
             L |-> false
         </local2Base>
-    rule <k> br(BB:LabelString) => evalBlock(BB) ...</k>
+    rule <k> evalTermInst(br label BB:LabelString _:InstructionMetadatas) => br(BB) ...</k>
+    rule [br]: <k> br(BB:LabelString) => evalBlock(BB) ...</k>
 endmodule
