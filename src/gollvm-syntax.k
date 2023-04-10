@@ -688,7 +688,7 @@ module GOLLVM-SYNTAX
       together in memory. The elements of a structure may be any type that has a size.
     */
     syntax IntType    ::= IntTypePre
-                        | LocalName  [klabel(#namedType)]
+                        | LocalName
     syntax IntTypePre ::=  r"i[1-9][0-9]*" [token]
     syntax FPType  ::= "float" [token] | "double" [token] | "ppc_fp128" [token] | "fp128" [token]
                      | "x86_fp80" [token] | "half" [token]

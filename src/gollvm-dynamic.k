@@ -50,10 +50,12 @@ module GOLLVM-DYNAMIC
             <currFunc> Fn </currFunc>
             <currBlock> _ => BB </currBlock>
             <instList> _ => InstList </instList>
+            ...
          </control>
     
     //  split instruction list
     rule <k> evalInsts(ListItem(I:Instruction) L:List) => execInst (I) ~> evalInsts(L) ...</k>
+        <currInst> _ => I </currInst>
     rule <k> evalInsts (.List) => . ...</k>
 
 endmodule

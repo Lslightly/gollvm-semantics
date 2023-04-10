@@ -36,15 +36,18 @@ module GOLLVM-CONFIGURATION
             <control>
                 <currFunc> .K </currFunc>
                 <currBlock> .K </currBlock>
+                <currInst> .K </currInst>
                 <instList> .List </instList>
             </control>
             <mem>   //  Base to object
                 .Map
             </mem>
             <nextId> 0 </nextId>    //  number less than nextId is valid address.
-            <local2Base>
+            <local2Base>    //  local value to base
                 .Map
             </local2Base>
         </dynamic>
+        <warnings> .List </warnings>
+        <errors> .List </errors>
     </T>
 endmodule
