@@ -130,6 +130,35 @@ func (ModuleASMDeletor) run(content string) string {
 	return strings.Join(res, "\n")
 }
 
+type LabelPrefixTrimer struct{}
+
+func (LabelPrefixTrimer) run(content string) string {
+	lines := strings.Split(content, "\n")
+	res := make([]string, 0, len(lines))
+	for _, line := range lines {
+		tmp := brTrimLabel(line)
+		tmp = phiTrimLabel(tmp)
+		res = append(res, tmp)
+	}
+	return strings.Join(res, "\n")
+}
+
+func brTrimLabel(line string) string {
+	if strings.Contains(line, "br") {
+		label_re := regexp.MustCompile("label(.*?)\\%(.*?)")
+		return label_re.ReplaceAllString(line, "label$1$2")
+	}
+	return line
+}
+
+func phiTrimLabel(line string) string {
+	if strings.Contains(line, "phi") {
+		label_re := regexp.MustCompile("\\[(.*?),(.*?)\\%(.*?)\\]")
+		return label_re.ReplaceAllString(line, "[$1,$2$3]")
+	}
+	return line
+}
+
 func init() {
 	flag.Usage = Usage
 }
@@ -149,6 +178,7 @@ func main() {
 	mgr := newPassMgr()
 	mgr.addPass(ModuleASMDeletor{})
 	mgr.addPass(CommentDeleter{})
+	mgr.addPass(LabelPrefixTrimer{})
 	mgr.runAll(&content)
 	fmt.Println(content)
 }

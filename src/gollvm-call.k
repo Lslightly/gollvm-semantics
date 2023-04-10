@@ -24,6 +24,12 @@ module CALL-PREPROCESS
             _:FuncAttrs _:InstructionMetadatas)
     => 
     NonVoidGlobalCall (LocalV, RetType, Fn, Params) ...</k>
+
+    rule [voidglobalcall]: <k>
+    execInst (call _:OptCallingConv _:RetAttrs void Fn:GlobalName(Params:ParamList) _:FuncAttrs _:InstructionMetadatas)
+    =>
+    VoidGlobalCall (Fn, Params) ...
+    </k>
 endmodule
 
 //  for function call

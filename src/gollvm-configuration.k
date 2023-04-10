@@ -39,7 +39,7 @@ module GOLLVM-CONFIGURATION
                 <currInst> .K </currInst>
                 <instList> .List </instList>
             </control>
-            <mem>   //  Base to object
+            <mem>   //  Addr to object
                 .Map
             </mem>
             <nextId> 0 </nextId>    //  number less than nextId is valid address.

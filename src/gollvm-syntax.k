@@ -68,6 +68,8 @@ module GOLLVM-SYNTAX
     syntax LabelStringConstant ::= r"[a-zA-Z\\.\\_\\-\\$0-9]*" [token]
     syntax LabelString ::= LabelStringConstant | String
 
+    syntax CConstString ::= r"c\\\".*\\\"" [token]
+
     //define metadata variables, attribute group ids and comdat variables.
     syntax MetadataVar ::= r"\\![a-zA-Z\\.\\_\\-\\$\\\\][0-9a-zA-Z\\.\\_\\-\\$\\\\]*"
                            [token]
@@ -806,10 +808,10 @@ module GOLLVM-SYNTAX
       vector typed. They must also be identical types.
     */
     syntax IPredicate ::= "eq" | "ne" | "slt" | "sgt" | "sle" | "sge"
-                         | "ult" [klabel(#ultOfIcmp)]
-                         | "ugt" [klabel(#ugtOfIcmp)]
-                         | "ule" [klabel(#uleOfIcmp)]
-                         | "uge" [klabel(#ugeOfIcmp)]
+                         | "ult"
+                         | "ugt"
+                         | "ule"
+                         | "uge"
 
 
     /*@
@@ -897,7 +899,7 @@ module GOLLVM-SYNTAX
                            | "[" ReturnedVal "]"
                            | "{" ReturnedVal "}"
                            | "<" "{" ReturnedVal "}" ">"
-                           | "c" String
+                           | CConstString
                            | "asm" OptSideEffect OptAlignstack OptInteldialect
                              String "," String
                            | MetadataValueInt
@@ -1051,7 +1053,7 @@ module GOLLVM-SYNTAX
       The ‘phi‘ instruction takes a list of pairs as arguments,
       with one pair for each predecessor basic block of the current block.
     */
-    syntax ValuePair ::= "[" ValueRef "," ValueRef "]"
+    syntax ValuePair ::= "[" ValueRef "," LabelString "]"
     syntax PHIList ::= NeList{ValuePair, ","}
 
     /*@
@@ -1061,7 +1063,7 @@ module GOLLVM-SYNTAX
     */
     syntax JumpTableEntry ::= IntType ConstValueRef "," LabelValue
     syntax JumpTable ::= List{JumpTableEntry," "}
-    syntax LabelValue ::= "label" ValueRef             [klabel(#labelValue)]
+    syntax LabelValue ::= "label" LabelString             [klabel(#labelValue)]
     syntax LabelValues ::= List{LabelValue,","}
 
 
