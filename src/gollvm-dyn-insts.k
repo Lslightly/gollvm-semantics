@@ -17,6 +17,8 @@ module GOLLVM-DYN-INSTS-SYNTAX
     syntax KItem ::= warn(KItem, String) | error(KItem, String) | heap2stack(KItem, KItem, KItem)
     //  store(dst, Address)
     syntax KItem ::= storeAddress(LocalName, LocalName)
+    //  store(dst, nonAddr(Value))
+    syntax KItem ::= storeNonAddr(LocalName, NonAddr)
 
     //  instructions
     syntax LocalName ::= getPhiValueFromBlock(Map, LabelString) [function]
@@ -48,9 +50,23 @@ module GOLLVM-DYN-INSTS
         <currInst> CurrInst </currInst>
         <errors>... .List => ListItem(heap2stack(Dst, Src, CurrInst))</errors>
         [owise]
+    
+    rule <k> storeNonAddr (L:LocalName, Non:NonAddr) => updateObjectList (lookUpBase (L), lookUpObjectOfName (L), 0, Non) ...</k>
+    
+    rule isNonAddrSort(_:NonAddr) => true
+    rule isNonAddrSort(_) => false [owise]
+
+    rule trimWrapperNonAddr(nonAddr(I:KItem)) => I
+    
+    rule [[ lookUpPrim (V:LocalName) => Prim ]]
+        <local2prim>
+            ... V |-> Prim ...
+        </local2prim>
+
+    rule getListElem(object(_:ObjectType, _:Bool, LIST, _:Map, _:Location)) => LIST[0]
+    rule getListElemOfName(L:LocalName) => getListElem(lookUpObjectOfName(L))
 
     rule inHeap(object(_:ObjectType, _:Bool, _:List, _:Map, Loc:Location)) => Loc ==K heap
-
 
     rule [[ lookUpBase(L:LocalName) => Addr ]]
         <local2Base>
@@ -136,12 +152,17 @@ module GOLLVM-NORMAL-INSTS
         <local2Base>
             Local2Base => Local2Base [ Dst <- LIST[0]]
         </local2Base>
-        requires Src in_keys (Local2Base) andBool LIST[0] =/=K uninit
-    rule [Tloadowise]:
+        requires ((Src in_keys (Local2Base)) andBool (getListElemOfName (Src) =/=K uninit andBool (notBool isNonAddrSort(getListElemOfName(Src)))))
+
+    rule [Tloadprim]:
         <k>
-            execInst (_:LocalName = load _:OptVolatile _:Type , _:Type Src:LocalName, _:Align _:InstructionMetadatas)
-            => . ...  </k>
-        <warnings> ... .List => ListItem(warn(Src, "'s value is not address")) </warnings> [priority(51)]
+            execInst (Dst:LocalName = load _:OptVolatile _:Type , _:Type Src:LocalName, _:Align _:InstructionMetadatas)
+        => 
+            . ... </k>
+        <local2prim>
+            PRIM => PRIM [ Dst <- trimWrapperNonAddr(getListElem(lookUpObjectOfName(Src))) ]
+        </local2prim> requires isNonAddrSort(getListElem(lookUpObjectOfName(Src)))
+    
     
     rule [Tphi]: <k>
         execInst (Dst:LocalName = phi _:Type _:PHIList _:InstructionMetadatas)
@@ -169,16 +190,20 @@ module GOLLVM-NORMAL-INSTS
         <lastBlock> LastBlock </lastBlock>
         <currBlock> CurrBlock </currBlock>
     
-    rule [TstoreLocalName]: <k>
+    rule [TstoreLocalNameAddr]: <k>
         execInst(store _:OptVolatile _:Type V:LocalName , _:Type Loc:LocalName , _:Align _:InstructionMetadatas) => storeAddress (Loc, V) ... </k>
         <local2Base>
             Local2Base
         </local2Base>
         requires V in_keys(Local2Base)
-    rule [TstoreLocalNameOwise]:
+    rule [TstoreLocalNameNonAddr]:
         <k>
-        execInst(store _:OptVolatile _:Type V:LocalName , _:Type _:LocalName , _:Align _:InstructionMetadatas) => . ... </k>
-        <warnings>... .List => ListItem(warn(V, "'s value is not address"))</warnings> [priority(51)]
+        execInst(store _:OptVolatile _:Type V:LocalName , _:Type Dst:LocalName , _:Align _:InstructionMetadatas) => storeNonAddr(Dst, nonAddr(lookUpPrim(V))) ... </k>
+
+    rule [TstoreConst]:
+        <k>
+            execInst(store _:OptVolatile _:Type V:ConstValueRef , _:Type Dst:LocalName , _:Align _:InstructionMetadatas) => storeNonAddr (Dst, nonAddr(V):NonAddr) ...
+        </k>
 
     
     rule getPhiValueFromBlock (M:Map, L:LabelString) => {M[L]}:>LocalName

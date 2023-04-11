@@ -18,17 +18,24 @@ module GOLLVM-DYNAMIC-SYNTAX
     syntax MapType ::= "map" "[" ObjectType "]" ObjectType
     syntax Location ::= "heap" | "stack"
 
+    //  nonAddr for primitive type
+    syntax Bool ::= isNonAddrSort(KItem) [function]
+    syntax NonAddr ::= nonAddr(KItem)
+    syntax KResult ::= NonAddr
+    syntax KItem ::= trimWrapperNonAddr(KItem) [function]
+    syntax KItem ::= lookUpPrim(LocalName) [function]
+
     //  object(TypeDescriptor, SizeConst, ListOfValues, MapOfValues, WhetherInStack)
     //  values in List/Map are lazily refreshed.
     //  List is Int to KItem map
     //  Map is ValueRef to Int map, i.e. key/value address map
     //  `SizeConst == true` means num of elements in object is known. We should check ListOfValues. MapOfValues is .Map
     //  `SizeConst == false` means num of elements in object is not constant. We should check MapOfValues. ListOfValues is .List
-    
+    syntax Object ::= object(ObjectType, Bool, List, Map, Location) | lookUpMem(Int) [function] | lookUpObjectOfName(LocalName) [function]
+    syntax KItem ::= getListElem(Object) [function] | getListElemOfName(LocalName) [function]
     syntax Bool ::= inHeap(Object) [function]
     syntax Int ::= lookUpBase(LocalName) [function] | deref(LocalName) [function]
     syntax KResult ::= Int
-    syntax Object ::= object(ObjectType, Bool, List, Map, Location) | lookUpMem(Int) [function] | lookUpObjectOfName(LocalName) [function]
     syntax KResult ::= Object
     //  Addr |-> Object.List[Int] = NewVal
     syntax KItem ::= updateObjectList(Int, Object, Int, KItem) [seqstrict]
