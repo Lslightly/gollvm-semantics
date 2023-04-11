@@ -25,6 +25,7 @@ module GOLLVM-DYNAMIC-SYNTAX
     //  `SizeConst == true` means num of elements in object is known. We should check ListOfValues. MapOfValues is .Map
     //  `SizeConst == false` means num of elements in object is not constant. We should check MapOfValues. ListOfValues is .List
     
+    syntax Bool ::= inHeap(Object) [function]
     syntax Int ::= lookUpBase(LocalName) [function] | deref(LocalName) [function]
     syntax KResult ::= Int
     syntax Object ::= object(ObjectType, Bool, List, Map, Location) | lookUpMem(Int) [function] | lookUpObjectOfName(LocalName) [function]

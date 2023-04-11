@@ -14,7 +14,7 @@ module GOLLVM-DYN-INSTS-SYNTAX
     imports DYN-INSTS-INCLUDE
     imports STRING-SYNTAX
     imports MAP
-    syntax KItem ::= warn(KItem, String) | error(KItem, String)
+    syntax KItem ::= warn(KItem, String) | error(KItem, String) | heap2stack(KItem, KItem, KItem)
     //  store(dst, Address)
     syntax KItem ::= storeAddress(LocalName, LocalName)
 
@@ -43,6 +43,14 @@ module GOLLVM-DYN-INSTS
     rule <k> updateRefInMap (ContainerAddr:Int, Containee:LocalName, Key:ValueRef) => updateObjectMap (ContainerAddr, lookUpMem(ContainerAddr), Key, lookUpBase (Containee)) ... </k>
 
     rule <k> storeAddress (Dst:LocalName, Src:LocalName) => updateObjectList (lookUpBase(Dst), lookUpMem(lookUpBase(Dst)), 0, lookUpBase(Src)) ...</k>
+        requires notBool (inHeap(lookUpObjectOfName(Dst)) andBool notBool inHeap(lookUpObjectOfName (Src)))
+    rule <k> storeAddress (Dst:LocalName, Src:LocalName) => updateObjectList (lookUpBase(Dst), lookUpMem(lookUpBase(Dst)), 0, lookUpBase(Src)) ...</k>
+        <currInst> CurrInst </currInst>
+        <errors>... .List => ListItem(heap2stack(Dst, Src, CurrInst))</errors>
+        [owise]
+
+    rule inHeap(object(_:ObjectType, _:Bool, _:List, _:Map, Loc:Location)) => Loc ==K heap
+
 
     rule [[ lookUpBase(L:LocalName) => Addr ]]
         <local2Base>
