@@ -6,8 +6,9 @@ requires "gollvm-dyn-insts.k"
 module GOLLVM-RUNTIME-SYNTAX
     imports GOLLVM-SYNTAX
     imports GOLLVM-CALL-SYNTAX
-    syntax KItem ::= newobject(LocalName, ValueRef)
+    syntax KItem ::= newobject(LocalName, ObjectType)
     syntax KItem ::= makemap(LocalName, MapType)
+    syntax KItem ::= mapassign(LocalName, LocalName, ValueRef)
 endmodule
 
 module RUNTIME-PREPROCESS
@@ -21,6 +22,7 @@ module RUNTIME-PREPROCESS
     rule <k> NonVoidGlobalCall (LocalV, _:Type, @runtime.makemap__small, _:ParamList)
     =>
     makemap(LocalV, map[unknown]unknown) ... </k>
+    rule <k> NonVoidGlobalCall (LocalV, _:Type, @runtime.mapassign__fast64, _:ParamFactor, _:ParamFactor, _:Type _:ParamAttrs Hmap:LocalName, _:Type _:ParamAttrs Key:ValueRef) => mapassign(LocalV, Hmap, Key) ...</k>
 
     rule <k>
     VoidGlobalCall (@runtime.gcWriteBarrier, _:ParamFactor, _:Type _:ParamAttrs Dst:LocalName, _:Type _:ParamAttrs Src:LocalName)
@@ -35,14 +37,15 @@ module GOLLVM-RUNTIME
     imports INT
     imports BOOL
     imports MAP
-    rule <k> newobject(L:LocalName, TypeId:ValueRef) => . ...</k>
+    imports K-EQUAL
+    rule [Tnewobject]: <k> newobject(L:LocalName, TypeId:ObjectType) => . ...</k>
         <mem> Mem => Mem [ Addr <- object(TypeId, true, makeList(1, uninit), .Map, heap) ] </mem>
         <nextId> Addr => Addr +Int 1 </nextId>
         <local2Base>
             Local2Base => Local2Base [ L <- Addr ]
         </local2Base>
 
-    rule <k> makemap(L, MType:MapType) => . ...</k>
+    rule [Tmakemap]: <k> makemap(L, MType:MapType) => . ...</k>
         <mem>... .Map => 
         Addr |-> object(header(MType), true, makeList(1, Addr +Int 1), .Map, heap)
         Addr +Int 1 |-> object((MType), false, .List, .Map, heap)
@@ -52,5 +55,11 @@ module GOLLVM-RUNTIME
         <local2Base>
             Local2Base => Local2Base [L <- Addr]
         </local2Base>
+    
+    rule [TmapassignExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => addrMapInsert(Dst, findValAddr (Key, lookUpBase(Hmap))) ...</k> requires isKeyInMap(Key, lookUpBase(Hmap))
+
+    rule [TmapassignNotExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => newobject (Dst, unknown) ~> updateRefInMap(Hmap, Dst, Key) ...</k> 
+    [owise]
+
 
 endmodule

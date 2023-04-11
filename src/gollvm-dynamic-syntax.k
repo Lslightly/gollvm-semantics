@@ -11,7 +11,7 @@ module GOLLVM-DYNAMIC-SYNTAX
     syntax KItem ::= evalBlock(LabelString) | evalFunc(GlobalName) | evalInsts(List) | evalTermInst(BBTerminatorInstruction) | execInst(Instruction)
 
     //  addrAlias(dst, src) used to addrAlias dst with src
-    syntax KItem ::= addrAlias(LocalName, LocalName)
+    syntax KItem ::= addrAlias(LocalName, LocalName) | addrMapInsert(LocalName, Int)
     
     // header(ObjectType) is a List that contains the pointer to the underlying structure
     syntax ObjectType ::= ValueRef | MapType | Type | "unknown" | header(ObjectType)
@@ -19,15 +19,27 @@ module GOLLVM-DYNAMIC-SYNTAX
     syntax Location ::= "heap" | "stack"
 
     //  object(TypeDescriptor, SizeConst, ListOfValues, MapOfValues, WhetherInStack)
-    //  values in List are lazily refreshed.
+    //  values in List/Map are lazily refreshed.
+    //  List is Int to Int map
+    //  Map is ValueRef to Int map, i.e. key/value address map
     //  `SizeConst == true` means num of elements in object is known. We should check ListOfValues. MapOfValues is .Map
     //  `SizeConst == false` means num of elements in object is not constant. We should check MapOfValues. ListOfValues is .List
     
-    syntax KItem ::= lookUpBase(LocalName) [function]
+    syntax Int ::= lookUpBase(LocalName) [function]
     syntax KResult ::= Int
-    syntax Object ::= object(ObjectType, Bool, List, Map, Location) | lookUpMem(Int) [function]
+    syntax Object ::= object(ObjectType, Bool, List, Map, Location) | lookUpMem(Int) [function] | lookUpObjectOfName(LocalName) [function]
     syntax KResult ::= Object
-    //  Addr |-> firstKItem.List[Int] = secondKItem
+    //  Addr |-> Object.List[Int] = NewVal
     syntax KItem ::= updateObjectList(Int, Object, Int, KItem) [seqstrict]
-    syntax KItem ::= "uninit"
+    //  Addr |-> Object.Map[ValueRef] = NewVal
+    syntax KItem ::= updateObjectMap(Int, Object, ValueRef, Int) [seqstrict]
+    syntax UnInit ::= "uninit"
+    syntax KItem ::= UnInit
+    syntax KResult ::= UnInit
+    //  isValueInObjectMap(Key, Addr)
+    //  Addr |-> object(..., Map ...)
+    syntax Bool ::= isKeyInMap(ValueRef, Int) [function]
+    syntax Int ::= findValAddr(ValueRef, Int) [function]
+    //  updateRefInMap(Container, Containee, Key) Container's Map contains address of Containee
+    syntax KItem ::= updateRefInMap(LocalName, LocalName, ValueRef)
 endmodule

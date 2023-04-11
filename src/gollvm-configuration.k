@@ -45,9 +45,12 @@ module GOLLVM-CONFIGURATION
                 .Map
             </mem>
             <nextId> 0 </nextId>    //  number less than nextId is valid address.
-            <local2Base>    //  local value to base
+            <local2Base>    //  local value to base addr
                 .Map
             </local2Base>
+            <local2prim>    //  local value to primitive value
+                .Map
+            </local2prim>
         </dynamic>
         <warnings> .List </warnings>
         <errors> .List </errors>
