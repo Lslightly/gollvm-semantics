@@ -56,9 +56,9 @@ module GOLLVM-RUNTIME
             Local2Base => Local2Base [L <- Addr]
         </local2Base>
     
-    rule [TmapassignExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => addrMapInsert(Dst, findValAddr (Key, lookUpBase(Hmap))) ...</k> requires isKeyInMap(Key, lookUpBase(Hmap))
+    rule [TmapassignExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => addrMapInsert(Dst, findValAddr (Key, deref(Hmap))) ...</k> requires isKeyInMap(Key, deref(Hmap))
 
-    rule [TmapassignNotExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => newobject (Dst, unknown) ~> updateRefInMap(Hmap, Dst, Key) ...</k> 
+    rule [TmapassignNotExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => newobject (Dst, unknown) ~> updateRefInMap(deref(Hmap), Dst, Key) ...</k> 
     [owise]
 
 

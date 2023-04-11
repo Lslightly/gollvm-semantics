@@ -40,7 +40,7 @@ module GOLLVM-DYN-INSTS
             MAP => MAP [Dst <- Addr]
         </local2Base>
     
-    rule <k> updateRefInMap (Container:LocalName, Containee:LocalName, Key:ValueRef) => updateObjectMap (lookUpBase(Container), lookUpObjectOfName (Container), Key, lookUpBase (Containee)) ... </k>
+    rule <k> updateRefInMap (ContainerAddr:Int, Containee:LocalName, Key:ValueRef) => updateObjectMap (ContainerAddr, lookUpMem(ContainerAddr), Key, lookUpBase (Containee)) ... </k>
 
     rule <k> storeAddress (Dst:LocalName, Src:LocalName) => updateObjectList (lookUpBase(Dst), lookUpMem(lookUpBase(Dst)), 0, lookUpBase(Src)) ...</k>
 
@@ -48,6 +48,12 @@ module GOLLVM-DYN-INSTS
         <local2Base>
             ... L |-> Addr:Int ...
         </local2Base>
+    rule [[ deref(L:LocalName) => {LIST[0]}:>Int ]]
+        <mem>
+            ...
+            lookUpBase(L) |-> object(_:ObjectType, _:Bool, LIST, _:Map, _:Location)
+            ...
+        </mem>
     
     rule [[ lookUpMem(Addr:Int) => Obj ]]
         <mem>
@@ -78,6 +84,7 @@ module GOLLVM-DYN-INSTS
             Addr |-> object(_:ObjectType, _:Bool, _:List, M:Map, _:Location)
             ...
         </mem> requires Key in_keys(M)
+    
     
 
 endmodule

@@ -20,12 +20,12 @@ module GOLLVM-DYNAMIC-SYNTAX
 
     //  object(TypeDescriptor, SizeConst, ListOfValues, MapOfValues, WhetherInStack)
     //  values in List/Map are lazily refreshed.
-    //  List is Int to Int map
+    //  List is Int to KItem map
     //  Map is ValueRef to Int map, i.e. key/value address map
     //  `SizeConst == true` means num of elements in object is known. We should check ListOfValues. MapOfValues is .Map
     //  `SizeConst == false` means num of elements in object is not constant. We should check MapOfValues. ListOfValues is .List
     
-    syntax Int ::= lookUpBase(LocalName) [function]
+    syntax Int ::= lookUpBase(LocalName) [function] | deref(LocalName) [function]
     syntax KResult ::= Int
     syntax Object ::= object(ObjectType, Bool, List, Map, Location) | lookUpMem(Int) [function] | lookUpObjectOfName(LocalName) [function]
     syntax KResult ::= Object
@@ -39,7 +39,10 @@ module GOLLVM-DYNAMIC-SYNTAX
     //  isValueInObjectMap(Key, Addr)
     //  Addr |-> object(..., Map ...)
     syntax Bool ::= isKeyInMap(ValueRef, Int) [function]
+    //  findValAddr(Key, Addr)
+    //  Addr |-> object(..., Map ...)
+    //  return Map[Key]
     syntax Int ::= findValAddr(ValueRef, Int) [function]
-    //  updateRefInMap(Container, Containee, Key) Container's Map contains address of Containee
-    syntax KItem ::= updateRefInMap(LocalName, LocalName, ValueRef)
+    //  updateRefInMap(ContainerAddr, Containee, Key) ContainerAddr's object's Map contains address of Containee
+    syntax KItem ::= updateRefInMap(Int, LocalName, ValueRef)
 endmodule
