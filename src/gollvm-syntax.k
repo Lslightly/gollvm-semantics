@@ -414,6 +414,10 @@ module GOLLVM-SYNTAX
                        | "signext"  [klabel(#signextOfParam)]
                        | "noalias" [klabel(#noaliasOfParam)]
                        | "nonnull" [klabel(#nonnullOfParam)]
+                       | "immarg"
+                       | "writeonly"
+                       | "\"go_sret\""
+                       | "sret(" Type ")"
     syntax ParamAttrs ::= List{ParamAttr," "}
     syntax KItem ::= ParamAttrs
 

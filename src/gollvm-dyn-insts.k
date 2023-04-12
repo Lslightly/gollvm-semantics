@@ -2,23 +2,20 @@ requires "gollvm-syntax.k"
 requires "gollvm-configuration.k"
 requires "gollvm-dynamic-syntax.k"
 requires "gollvm-call.k"
+requires "gollvm-mem.k"
 
 module DYN-INSTS-INCLUDE
     imports GOLLVM-SYNTAX
     imports GOLLVM-CONFIGURATION
     imports GOLLVM-DYNAMIC-SYNTAX
     imports GOLLVM-CALL-SYNTAX
+    imports GOLLVM-MEM
 endmodule
 
 module GOLLVM-DYN-INSTS-SYNTAX
     imports DYN-INSTS-INCLUDE
     imports STRING-SYNTAX
     imports MAP
-    syntax KItem ::= warn(KItem, String) | error(KItem, String) | heap2stack(KItem, KItem, KItem)
-    //  store(dst, Address)
-    syntax KItem ::= storeAddress(LocalName, LocalName)
-    //  store(dst, nonAddr(Value))
-    syntax KItem ::= storeNonAddr(LocalName, NonAddr)
 
     //  instructions
     syntax LocalName ::= getPhiValueFromBlock(Map, LabelString) [function]
@@ -30,86 +27,8 @@ module GOLLVM-DYN-INSTS
     imports GOLLVM-NORMAL-INSTS
     imports GOLLVM-TERM-INSTS
     imports GOLLVM-CALL
-    imports K-EQUAL
     rule <k> execInst(I) => . ...</k>
         <warnings> ... .List => ListItem(warn(I, "not modeled"))</warnings> [priority(100)]
-    rule <k> addrAlias(Dst:LocalName, Src:LocalName) => addrMapInsert(Dst, {MAP[Src]}:>Int) ...</k>
-        <local2Base>
-            MAP
-        </local2Base>
-    rule <k> addrMapInsert(Dst:LocalName, Addr:Int) => . ... </k>
-        <local2Base>
-            MAP => MAP [Dst <- Addr]
-        </local2Base>
-    
-    rule <k> updateRefInMap (ContainerAddr:Int, Containee:LocalName, Key:ValueRef) => updateObjectMap (ContainerAddr, lookUpMem(ContainerAddr), Key, lookUpBase (Containee)) ... </k>
-
-    rule <k> storeAddress (Dst:LocalName, Src:LocalName) => updateObjectList (lookUpBase(Dst), lookUpMem(lookUpBase(Dst)), 0, lookUpBase(Src)) ...</k>
-        requires notBool (inHeap(lookUpObjectOfName(Dst)) andBool notBool inHeap(lookUpObjectOfName (Src)))
-    rule <k> storeAddress (Dst:LocalName, Src:LocalName) => updateObjectList (lookUpBase(Dst), lookUpMem(lookUpBase(Dst)), 0, lookUpBase(Src)) ...</k>
-        <currInst> CurrInst </currInst>
-        <errors>... .List => ListItem(heap2stack(Dst, Src, CurrInst))</errors>
-        [owise]
-    
-    rule <k> storeNonAddr (L:LocalName, Non:NonAddr) => updateObjectList (lookUpBase (L), lookUpObjectOfName (L), 0, Non) ...</k>
-    
-    rule isNonAddrSort(_:NonAddr) => true
-    rule isNonAddrSort(_) => false [owise]
-
-    rule trimWrapperNonAddr(nonAddr(I:KItem)) => I
-    
-    rule [[ lookUpPrim (V:LocalName) => Prim ]]
-        <local2prim>
-            ... V |-> Prim ...
-        </local2prim>
-
-    rule getListElem(object(_:ObjectType, _:Bool, LIST, _:Map, _:Location)) => LIST[0]
-    rule getListElemOfName(L:LocalName) => getListElem(lookUpObjectOfName(L))
-
-    rule inHeap(object(_:ObjectType, _:Bool, _:List, _:Map, Loc:Location)) => Loc ==K heap
-
-    rule [[ lookUpBase(L:LocalName) => Addr ]]
-        <local2Base>
-            ... L |-> Addr:Int ...
-        </local2Base>
-    rule [[ deref(L:LocalName) => {LIST[0]}:>Int ]]
-        <mem>
-            ...
-            lookUpBase(L) |-> object(_:ObjectType, _:Bool, LIST, _:Map, _:Location)
-            ...
-        </mem>
-    
-    rule [[ lookUpMem(Addr:Int) => Obj ]]
-        <mem>
-            ... Addr |-> Obj ...
-        </mem>
-    rule lookUpObjectOfName (L:LocalName) => lookUpMem (lookUpBase(L))
-
-    rule <k> updateObjectList (Addr, object(Type:ObjectType, Const:Bool, LIST, MAP, Loc), Idx:Int, NewVal:KItem) => . ...  </k>
-        <mem>
-            Mem => Mem [ Addr <- object(Type, Const, LIST[Idx <- NewVal], MAP, Loc)]
-        </mem>
-    
-    rule <k> updateObjectMap (Addr, object(Type:ObjectType, Const:Bool, LIST, MAP, Loc), Key:ValueRef, ValPtr:Int) => . ... </k>
-        <mem>
-            Mem => Mem [ Addr <- object (Type, Const, LIST, MAP[Key <- ValPtr], Loc) ]
-        </mem>
-    
-    rule [[ isKeyInMap(Key:ValueRef, Addr:Int) => Key in_keys(M) ]]
-        <mem>
-            ...
-            Addr |-> object (_:ObjectType, _:Bool, _:List, M:Map, _:Location)
-            ...
-        </mem>
-    
-    rule [[ findValAddr(Key:ValueRef, Addr:Int) => {M [ Key ]}:>Int ]]
-        <mem>
-            ...
-            Addr |-> object(_:ObjectType, _:Bool, _:List, M:Map, _:Location)
-            ...
-        </mem> requires Key in_keys(M)
-    
-    
 
 endmodule
 
@@ -120,7 +39,7 @@ module GOLLVM-NORMAL-INSTS
     imports INT
     imports K-EQUAL
 
-    rule [Tbitcast]: <k> execInst(Dst:LocalName = bitcast _:Type Src:LocalName to _:Type _:InstructionMetadatas) => addrAlias(Dst, Src) ...</k>
+    rule [Tbitcast]: <k> execInst(Dst:LocalName = bitcast _:Type Src:LocalName to _:Type _:InstructionMetadatas) => addrAlias(Dst, Src) ...</k> requires isAddr(Src)
     
     rule [Ticmp]: <k> execInst(Dst:LocalName = icmp eq _:Type L1:LocalName , C2:Int _:InstructionMetadatas) => . ... </k>
         <local2prim>

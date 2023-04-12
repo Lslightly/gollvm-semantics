@@ -2,10 +2,12 @@ requires "gollvm-syntax.k"
 requires "gollvm-configuration.k"
 requires "gollvm-call.k"
 requires "gollvm-dyn-insts.k"
+requires "gollvm-mem.k"
 
 module GOLLVM-RUNTIME-SYNTAX
     imports GOLLVM-SYNTAX
     imports GOLLVM-CALL-SYNTAX
+    imports GOLLVM-MEM-SYNTAX
     syntax KItem ::= newobject(LocalName, ObjectType)
     syntax KItem ::= makemap(LocalName, MapType)
     syntax KItem ::= mapassign(LocalName, LocalName, ValueRef)
@@ -31,7 +33,7 @@ endmodule
 
 module GOLLVM-RUNTIME
     imports GOLLVM-RUNTIME-SYNTAX
-    imports GOLLVM-DYNAMIC-SYNTAX
+    imports GOLLVM-MEM
     imports RUNTIME-PREPROCESS
     imports LIST
     imports INT
