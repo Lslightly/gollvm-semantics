@@ -38,5 +38,9 @@ module GOLLVM-CALL
     imports GOLLVM-CALL-SYNTAX
     imports GOLLVM-RUNTIME
 
+    rule <k> VoidGlobalCall (_:GlobalName, _:ParamList) #as Call => . ...</k>
+        <errors> ... .List => ListItem(error(Call, "not modeled")) </errors> [owise]
+    rule <k> NonVoidGlobalCall(_:LocalName, _:Type, _:GlobalName, _:ParamList) #as Call => . ...</k>
+        <errors> ... .List => ListItem(error(Call, "not modeled")) </errors> [owise]
 
 endmodule

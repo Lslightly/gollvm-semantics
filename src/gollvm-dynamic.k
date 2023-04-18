@@ -59,4 +59,13 @@ module GOLLVM-DYNAMIC
         <currInst> _ => I </currInst>
     rule <k> evalInsts (.List) => . ...</k>
 
+// type assertion
+    rule isIntSort(_:Int) => true
+    rule isIntSort(_) => false [owise]
+
+    rule castIntPrim(V:LocalName) => {lookUpPrim(V)}:>Int requires toIntCastable(V)
+    rule castIntPrim(V:Int) => V
+    rule toIntCastable (V:LocalName) => isIntSort(lookUpPrim(V)) requires isPrim(V)
+    rule toIntCastable (_:Int) => true
+    rule toIntCastable (_) => false [owise]
 endmodule

@@ -8,6 +8,7 @@ module GOLLVM-RUNTIME-SYNTAX
     imports GOLLVM-SYNTAX
     imports GOLLVM-CALL-SYNTAX
     imports GOLLVM-MEM-SYNTAX
+    imports OBJECT-SYNTAX
     syntax KItem ::= newobject(LocalName, ObjectType)
     syntax KItem ::= makemap(LocalName, MapType)
     syntax KItem ::= mapassign(LocalName, LocalName, ValueRef)
@@ -41,26 +42,26 @@ module GOLLVM-RUNTIME
     imports MAP
     imports K-EQUAL
     rule [Tnewobject]: <k> newobject(L:LocalName, TypeId:ObjectType) => . ...</k>
-        <mem> Mem => Mem [ Addr <- object(TypeId, true, makeList(1, uninit), .Map, heap) ] </mem>
+        <mem> Mem => Mem [ Addr <- object(TypeId, true, uninit, .Map, heap) ] </mem>
         <nextId> Addr => Addr +Int 1 </nextId>
         <local2Base>
-            Local2Base => Local2Base [ L <- Addr ]
+            Local2Base => Local2Base [ L <- pureAddr (Addr) ]
         </local2Base>
 
     rule [Tmakemap]: <k> makemap(L, MType:MapType) => . ...</k>
         <mem>... .Map => 
-        Addr |-> object(header(MType), true, makeList(1, Addr +Int 1), .Map, heap)
+        Addr |-> object(header(MType), true, pureAddr(Addr +Int 1), .Map, heap)
         Addr +Int 1 |-> object((MType), false, .List, .Map, heap)
         ...
         </mem>
         <nextId> Addr => Addr +Int 2</nextId>
         <local2Base>
-            Local2Base => Local2Base [L <- Addr]
+            Local2Base => Local2Base [L <- pureAddr (Addr)]
         </local2Base>
     
-    rule [TmapassignExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => addrMapInsert(Dst, findValAddr (Key, deref(Hmap))) ...</k> requires isKeyInMap(Key, deref(Hmap))
+    rule [TmapassignExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => addrMapInsert(Dst, readObjMap (baseMapIdx (getBase (deref(Hmap)), Key))) ...</k> requires isValidBaseMapIdxCtor(baseMapIdx (getBase(deref (Hmap)), Key))
 
-    rule [TmapassignNotExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => newobject (Dst, unknown) ~> updateRefInMap(deref(Hmap), Dst, Key) ...</k> 
+    rule [TmapassignNotExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => newobject (Dst, unknown) ~> updateRefInMap(baseMapIdx (getBase (deref (Hmap)), Key), Dst) ...</k> 
     [owise]
 
 
