@@ -62,6 +62,8 @@ module GOLLVM-DYNAMIC
 // type assertion
     rule isIntSort(_:Int) => true
     rule isIntSort(_) => false [owise]
+    rule isTypeSort(_:Type) => true
+    rule isTypeSort (_) => false [owise]
 
     rule castIntPrim(V:LocalName) => {lookUpPrim(V)}:>Int requires toIntCastable(V)
     rule castIntPrim(V:Int) => V

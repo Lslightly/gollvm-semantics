@@ -30,6 +30,10 @@ module RUNTIME-PREPROCESS
     rule <k>
     VoidGlobalCall (@runtime.gcWriteBarrier, _:ParamFactor, _:Type _:ParamAttrs Dst:LocalName, _:Type _:ParamAttrs Src:LocalName)
     => storeAddress(Dst, Src) ... </k>
+
+    rule <k>
+    VoidGlobalCall (@llvm.memcpy.p0i8.p0i8.i64, _:Type _:ParamAttrs DstPtr:LocalName , _:Type _:ParamAttrs SrcPtr:LocalName, _:Type _:ParamAttrs Size:Int, _:ParamFactor) => copy ({addressValOf(DstPtr)}:>BaseOffset, {addressValOf(SrcPtr)}:>BaseOffset, Size) ...
+    </k>
 endmodule
 
 module GOLLVM-RUNTIME

@@ -36,7 +36,7 @@ module GOLLVM-DYN-INSTS
     rule <k> execInst(I) => . ...</k>
         <warnings> ... .List => ListItem(warn(I, "not modeled"))</warnings> [priority(100)]
 
-    rule getGepIdxList(_:OptInRange _:Type V:ValueRef , Remains:ReturnedValGep) => ListItem(V) getGepIdxList(Remains)
+    rule getGepIdxList(_:OptInRange _:Type V:ValueRef , Remains:ReturnedValGep) => ListItem(castIntPrim(V)) getGepIdxList(Remains) requires toIntCastable(V)
     rule getGepIdxList(.ReturnedValGep) => .List
 endmodule
 
@@ -186,8 +186,24 @@ module GOLLVM-NORMAL-INSTS
     
     rule [Tand]:
         <k>
-            execInst(Dst:LocalName = and _:Type LHS:ValueRef, RHS:ValueRef _:InstructionMetadatas) => updatePrim(Dst, castIntPrim(LHS) &Int castIntPrim(RHS)) ...
-        </k> requires toIntCastable(LHS) andBool toIntCastable(RHS)
+            execInst(Dst:LocalName = and _:Type LHS:ValueRef, RHS:ValueRef _:InstructionMetadatas)
+        => 
+            updatePrim(Dst, castIntPrim(LHS) &Int castIntPrim(RHS)) ...
+        </k> requires toIntCastable(LHS) andThenBool toIntCastable(RHS)
+    
+    rule [Tadd]:
+        <k>
+            execInst (Dst:LocalName = add _:Type LHS:ValueRef, RHS:ValueRef _:InstructionMetadatas)
+        =>
+            updatePrim (Dst, castIntPrim(LHS) +Int castIntPrim(RHS)) ...
+        </k> requires toIntCastable(LHS) andThenBool toIntCastable(RHS)
+    
+    rule [Tsub]:
+        <k>
+            execInst (Dst:LocalName = sub _:Type LHS:ValueRef, RHS:ValueRef _:InstructionMetadatas)
+        =>
+            updatePrim (Dst, castIntPrim(LHS) -Int castIntPrim(RHS)) ...
+        </k> requires toIntCastable(LHS) andThenBool toIntCastable(RHS)
     
     rule [Ttrunc]:
         <k>

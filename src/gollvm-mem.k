@@ -49,6 +49,7 @@ module OBJECT-SYNTAX
     //  `SizeConst == false` means num of elements in object is not constant. We should check MapOfValues. ListOfValues is .List
     syntax Content ::= NonAddr | Address | List | UnInit
     syntax KItem ::= Content
+    syntax KResult ::= Content
     syntax Object ::= object(ObjectType, Bool, Content, Map, Location)
 
 // create/search:
@@ -61,19 +62,24 @@ module OBJECT-SYNTAX
 // properties:
     syntax Bool ::= inHeap(Object) [function]
                 |   isSizeConst(Object) [function]
-    syntax ObjectType ::= getObjType(Object) [function]
+    syntax Type ::= getObjType(Object) [function]
     syntax KResult ::= Int
     syntax KResult ::= Object
     //  isValidBaseMapIdxCtor(Key, Addr)
     //  Addr |-> object(..., Map ...)
     //  return Key in_keys(Map)
     syntax Bool ::= isValidBaseMapIdxCtor(BaseMapIdx) [function]
+    syntax Bool ::= isValidBaseOffset(BaseOffset) [function]
     /*
         if content is 
             { { i64*, i1 }, i64, i64 }
         the number of indexs to visit type of i64* is 2, i.e. 0, 0
     */
     syntax Int ::= cntNumIdxToType(Content, Type) [function]
+    /*  getTypeOfOffset(size, baseOffset)
+        return the type matched on baseOffset
+    */
+    syntax Type ::= getTypeOfOffset(BaseOffset) [function]
 
 // read:
     //  readObjMap(baseMapIdx(Addr, Key))
@@ -101,6 +107,19 @@ module OBJECT-SYNTAX
                     | updateMapOfObject(Object, ValueRef, Address) [function]
     syntax Content ::= updateContentMultiDim(Content, List, Content) [function]
 
+    /*
+        getMatchTypeOffset(size, baseOffset, number of remain zeros to be appended)
+    */
+    syntax Bool ::= canMatchTypeOffset(Int, BaseOffset, Int) [function]
+    syntax BaseOffset ::= getMatchTypeOffset(Int, BaseOffset) [function]
+
+    /*
+        copy(dstptr, srcptr, size), volatile is ignored
+    */
+    syntax KItem ::= copy(BaseOffset, BaseOffset, Int)
+                /* docopy(dstptr, srcptr) will copy the content under srcptr to dstptr immediately */
+                |   docopy(BaseOffset, BaseOffset)
+
 endmodule
 
 module OBJECT
@@ -126,7 +145,7 @@ module OBJECT
 
     rule isSizeConst(object(_:ObjectType, SizeConst:Bool, _:Content, _:Map, _:Location)) => SizeConst
 
-    rule getObjType(object(ObjTy:ObjectType, _:Bool, _:Content, _:Map, _:Location)) => ObjTy
+    rule getObjType(object(ObjTy:ObjectType, _:Bool, _:Content, _:Map, _:Location)) => {ObjTy}:>Type requires isTypeSort(ObjTy)
 
     rule [[ isValidBaseMapIdxCtor(baseMapIdx (Addr:Int, Key:ValueRef)) => Key in_keys(M) ]]
         <mem>
@@ -135,7 +154,11 @@ module OBJECT
             ...
         </mem>
     
+    rule isValidBaseOffset(baseOffset(Base:Int, IdxList:List)) => isValidTypeIdx (getObjType(searchObjAtBase(Base)), IdxList)
+    
     rule cntNumIdxToType(C:List, T:Type) => cnt1stItemDim(C) -Int cntDepthOf1stUnderlyingType(T)
+
+    rule getTypeOfOffset(baseOffset (Base:Int, IdxList)) => subType(getObjType (searchObjAtBase(Base)), IdxList)
 
 // read:--------------------------------------
     rule [TreadObjMap]: [[ readObjMap(baseMapIdx (Addr:Int, Key:ValueRef)) => {M [ Key ]}:>Address ]]
@@ -180,6 +203,30 @@ module OBJECT
     rule [TupdateContentEmptyIdx]: updateContentMultiDim(_:Content, .List, NewVal) => NewVal [priority(50)]
     rule [TupdateContentOneIdx]: updateContentMultiDim (Src:List, ListItem(I:Int) .List, NewVal) => Src [ I <- NewVal] [priority(51)]
     rule [TupdateContentMultiIdx]: updateContentMultiDim (Src:List, ListItem(I:Int) RemainIdxs:List, NewVal:Content) => Src [ I <- updateContentMultiDim ({Src[I]}:>List, RemainIdxs, NewVal)] [priority(52)]
+
+    rule [Tcopy]:
+    <k>
+        copy(DstPtr:BaseOffset, SrcPtr:BaseOffset, Size) => docopy(getMatchTypeOffset(Size, largestStepOffset(DstPtr)), getMatchTypeOffset(Size, largestStepOffset(SrcPtr))) ...
+    </k>
+        requires canMatchTypeOffset(Size, largestStepOffset(DstPtr), remainZerosToAdd(largestStepOffset(DstPtr))) andThenBool canMatchTypeOffset(Size, largestStepOffset(SrcPtr), remainZerosToAdd(largestStepOffset(SrcPtr)))
+
+    rule [Tdocopy]:
+    <k>
+        docopy (DstPtr:BaseOffset, SrcPtr:BaseOffset) => updateObjList(DstPtr, readObjAtAddr(SrcPtr)) ...
+    </k>
+
+    rule [TgetMatchTypeOffset]: getMatchTypeOffset(Size:Int, Addr:BaseOffset) => Addr
+        requires SizeOfType(getTypeOfOffset(Addr)) ==Int Size
+    rule [TgetMatchTypeOffsetRecur]: getMatchTypeOffset(Size:Int, baseOffset(Base:Int, IdxList:List)) => getMatchTypeOffset (Size, baseOffset (Base, IdxList ListItem(0)))
+        [owise]
+    
+    rule [TcanMatchTypeOffsetTrue]: canMatchTypeOffset (Size, Addr:BaseOffset, _:Int) => true
+        requires SizeOfType(getTypeOfOffset(Addr)) ==Int Size [priority(50)]
+    rule [TcanMatchTypeOffsetQuick]: canMatchTypeOffset (Size, Addr:BaseOffset, _:Int) => false
+        requires SizeOfType(getTypeOfOffset(Addr)) <Int Size [priority(50)]
+    rule [TcanMatchTypeOffsetLast]: canMatchTypeOffset (_, _, 0) => false [priority(51)]
+    rule [TcanMatchTypeOffsetRecur]: canMatchTypeOffset (Size, baseOffset (Base:Int, IdxList), RemainZeros:Int) => canMatchTypeOffset (Size, baseOffset (Base, IdxList ListItem(0)), RemainZeros -Int 1) [priority(52)]
+    
     
 endmodule
 
@@ -200,6 +247,9 @@ module GOLLVM-MEM-SYNTAX
                         |   appendOffset(BaseOffset, List) [function]
                         //  cast baseOffset(Base, IdxList) to baseOffset(Base, prefixOfList(IdxList, num of idxes))
                         |   bitcastOffset(BaseOffset, Int) [function]
+                        |   nextElemOffset(BaseOffset) [function]
+                        |   largestStepOffset(BaseOffset) [function]
+    syntax Int ::= remainZerosToAdd(BaseOffset) [function]
     //  for Base key index
     syntax BaseMapIdx ::= baseMapIdx(Int, ValueRef)
 
@@ -236,6 +286,10 @@ module GOLLVM-MEM
 
     rule appendOffset (baseOffset(Base:Int, Idx1:List), Idx2:List) => baseOffset (Base, Idx1 Idx2)
     rule bitcastOffset (baseOffset(Base:Int, Idx:List), EndIdx:Int) => baseOffset (Base, prefixOfList(Idx, EndIdx))
+    // rule nextElemOffset(baseOffset(Base:Int, Idx:List)) => /*TODO*/
+    rule largestStepOffset(baseOffset(Base:Int, Idx:List)) => baseOffset(Base, trimEndZeros(Idx))
+
+    rule remainZerosToAdd(Addr:BaseOffset) => cntDepthOf1stUnderlyingType(getTypeOfOffset(Addr))
 
     rule getBase(baseOffset(B:Int, _:List)) => B
     rule getBase(baseMapIdx(B:Int, _:ValueRef)) => B

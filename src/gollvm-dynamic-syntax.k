@@ -11,9 +11,19 @@ module LLVM-TYPE-DYNAMIC-SYNTAX
     //  TypeList -> List with default value uninit
     syntax Content ::= initOfType(Type) [function]
     syntax List ::= initOfTypeList(TypeList) [function]
+                |   convTypeList2List(TypeList) [function]
     syntax Int ::=  cntDepthOf1stUnderlyingType(Type) [function]
                 |   cntDepthOf1stUnderlyingTypeOfList(TypeList) [function]
+                |   SizeOfType(Type) [function]
+                |   SizeOfTypeList(TypeList) [function]
     syntax Type ::= trimPtrType(Type) [function]
+                |   subType(Type, List) [function]
+                |   subTypeList(TypeList, List) [function]
+                //  matchSubType(ParentType, Size)
+                |   matchSubType(Type, Int) [function]
+    syntax Bool ::= isValidTypeIdx(Type, List) [function]
+                //  List of Type, Idxs
+                |   isValidTypeListIdx(List, List) [function]
 
 endmodule
 
@@ -22,19 +32,51 @@ module LLVM-TYPE-DYNAMIC
     imports OBJECT-SYNTAX
     imports LIST
 
-    rule initOfType (metadata) => uninit
-    rule initOfType (_:X86Type) => uninit
+    // rule initOfType (metadata) => uninit
+    // rule initOfType (_:X86Type) => uninit
+    // rule initOfType (< I:Int x T:Type >) => makeList(I, initOfType (T))
+    // rule initOfType (_:Type ( _:ArgList )) => uninit
+    // rule initOfType (< { TyList:TypeList } >) => initOfTypeList(TyList)
     rule initOfType (_:PrimType) => uninit
     rule initOfType (_:Type _:OptAddrSpace *) => uninit
-    rule initOfType (_:Type ( _:ArgList )) => uninit
     rule initOfType ([ I:Int x T:Type ]) => makeList(I, initOfType (T))
-    rule initOfType (< I:Int x T:Type >) => makeList(I, initOfType (T))
     rule initOfType ({ TyList:TypeList }) => initOfTypeList(TyList)
-    rule initOfType (< { TyList:TypeList } >) => initOfTypeList(TyList)
 
     rule initOfTypeList (T:Type, Ts:TypeList) => ListItem(initOfType(T)) initOfTypeList (Ts)
     rule initOfTypeList(.TypeList) => .List
 
+    rule convTypeList2List(T:Type, TL:TypeList) => ListItem(T) convTypeList2List (TL)
+    rule convTypeList2List(.TypeList) => .List
+
+    rule SizeOfType (metadata) => 8
+    rule SizeOfType (_:X86Type) => 8
+    rule SizeOfType (_:PrimType) => 8
+    rule SizeOfType (_:Type _:OptAddrSpace *) => 8
+    rule SizeOfType (_:Type ( _:ArgList )) => 8
+    rule SizeOfType ([ I:Int x T:Type ]) => I *Int SizeOfType(T)
+    rule SizeOfType (< I:Int x T:Type >) => I *Int SizeOfType(T)
+    rule SizeOfType ({ TyList:TypeList }) => SizeOfTypeList(TyList)
+    rule SizeOfType (< { TyList:TypeList } >) => SizeOfTypeList(TyList)
+
+    rule SizeOfTypeList (T:Type, Ts:TypeList) => SizeOfType(T) +Int SizeOfTypeList (Ts)
+    rule SizeOfTypeList(.TypeList) => 0
+
+    rule subType(T:Type, .List) => T [priority(49)]
+    rule subType([_ x T], ListItem(_) L:List) => subType(T, L)
+    rule subType(<_ x T>, ListItem(_) L:List) => subType(T, L)
+    rule subType({ TyList }, L:List) => subTypeList(TyList, L)
+    rule subType(<{ TyList }>, L:List) => subTypeList(TyList, L)
+
+    rule subTypeList(TyList:TypeList, ListItem(I:Int) L:List) => subType({convTypeList2List(TyList)[I]}:>Type, L)
+
+    rule isValidTypeIdx (_:Type, .List) => true [priority(49)]
+    rule isValidTypeIdx(_:PrimType, .List) => true
+    rule isValidTypeIdx(_:Type _:OptAddrSpace *, .List) => true
+    rule isValidTypeIdx([ I:Int x T:Type ], ListItem(Idx:Int) L:List) => Idx <Int I andBool isValidTypeIdx(T, L)
+    rule isValidTypeIdx({ TyList:TypeList }, L:List) => isValidTypeListIdx(convTypeList2List(TyList), L)
+
+    rule isValidTypeListIdx (TyList:List, ListItem(Idx:Int) L:List) => Idx <Int size (TyList) andBool isValidTypeIdx({TyList[Idx]}:>Type, L)
+    rule isValidTypeIdx (_:Type, _:List) => false [owise]
 
     //  TODO
     rule cntDepthOf1stUnderlyingType (metadata) => 0
@@ -61,6 +103,7 @@ module GOLLVM-DYNAMIC-SYNTAX
     imports BOOL-SYNTAX
     imports ARRAY-SYNTAX
     imports MAP
+    imports K-EQUAL
     syntax KItem ::= evalBlock(LabelString) | evalFunc(GlobalName) | evalInsts(List) | evalTermInst(BBTerminatorInstruction) | execInst(Instruction)
 
     syntax KItem ::= warn(KItem, String) | error(KItem, String) | heap2stack(KItem, KItem, KItem)
@@ -71,13 +114,16 @@ module GOLLVM-DYNAMIC-SYNTAX
 
 // type assertion
     syntax Bool ::= isIntSort(KItem) [function]
+                |   isTypeSort(KItem) [function]
 
 
 // create:
     syntax List ::= createIdxList(Ints) [function]
 // properties:
     syntax Bool ::= isListSort(KItem) [function]
+                |   isValidIdx(List, Int) [function]
     syntax Int ::= cnt1stItemDim(List) [function]
+                |   find1stIdx(List, KItem) [function]
 // read:
                 //  src, idx list
     syntax KItem ::= getListElemMultiDim(List, List) [function]
@@ -90,15 +136,14 @@ module GOLLVM-DYNAMIC-SYNTAX
                     if prefixIdx >= len(src), then append (prefixIdx - size(src)) zeros at the end
                 */
                 |   prefixOfList(List, Int) [function]
+                //  remove ending zeros
+                |   trimEndZeros(List) [function]
+    
 
 // create:------------------------------------------
     syntax Ints ::= List{Int, ","}
     rule createIdxList (I:Int, Idxs:Ints) => ListItem(I) createIdxList(Idxs)
     rule createIdxList(.Ints) => .List
-
-    rule [TupdateListEmptyIdx]:updateListMultiDim (_, .List, NewVal:KItem) => ListItem(NewVal) .List [priority(50)]
-    rule [TupdateListOneIdx]:updateListMultiDim (Src:List, ListItem(I:Int) .List, NewVal) => Src [ I <- NewVal] [priority(51)]
-    rule [TupdateListMultiIdx]: updateListMultiDim (Src:List, ListItem(I:Int) RemainIdxs:List, NewVal:KItem) => Src [ I <- updateListMultiDim ({Src[I]}:>List, RemainIdxs, NewVal)] [priority(52)]
 
 // read:---------------------------------------------
     rule [TgetListElemMultiDimOneIdx]: getListElemMultiDim (Src:List, ListItem(I:Int) .List) => Src[I] [priority(50)]
@@ -108,14 +153,25 @@ module GOLLVM-DYNAMIC-SYNTAX
 // properties:----------------------------------------
     rule isListSort(_:List) => true
     rule isListSort(_) => false [owise]
+    rule isValidIdx(L:List, I:Int) => I >=Int 0 andBool I <Int size(L)
 
     rule cnt1stItemDim (.List) => 0
     rule cnt1stItemDim(ListItem(I) _:List) => 1 +Int cnt1stItemDim ({I}:>List) requires isListSort(I)
     rule cnt1stItemDim (ListItem(_) _:List) => 1 [owise]
+    rule find1stIdx (.List, _) => 1 [priority(49)]
+    rule find1stIdx(ListItem(I) _:List, Val:KItem) => 0 requires I ==K Val
+    rule find1stIdx(ListItem(_) Remains:List, Val:KItem) => 1 +Int find1stIdx (Remains, Val) [owise]
+
+//  update:------------------------------------------
+    rule [TupdateListEmptyIdx]:updateListMultiDim (_, .List, NewVal:KItem) => ListItem(NewVal) .List [priority(50)]
+    rule [TupdateListOneIdx]:updateListMultiDim (Src:List, ListItem(I:Int) .List, NewVal) => Src [ I <- NewVal] [priority(51)]
+    rule [TupdateListMultiIdx]: updateListMultiDim (Src:List, ListItem(I:Int) RemainIdxs:List, NewVal:KItem) => Src [ I <- updateListMultiDim ({Src[I]}:>List, RemainIdxs, NewVal)] [priority(52)]
 
     rule appendZeros (Src:List, Num:Int) => Src makeList(Num, 0)
     rule prefixOfList(Src:List, EndIdx:Int) => range(Src, 0, size(Src) -Int EndIdx) requires size(Src) >Int EndIdx
     rule prefixOfList(Src:List, EndIdx:Int) => appendZeros(Src, EndIdx -Int size(Src)) [owise]
+
+    rule trimEndZeros(L:List) => prefixOfList(L, find1stIdx(L, 0))
 
     syntax Int ::= castIntPrim(ValueRef) [function]
     syntax Bool ::= toIntCastable(ValueRef) [function]
