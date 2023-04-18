@@ -249,6 +249,9 @@ module GOLLVM-MEM-SYNTAX
                         |   bitcastOffset(BaseOffset, Int) [function]
                         |   nextElemOffset(BaseOffset) [function]
                         |   largestStepOffset(BaseOffset) [function]
+                        //  addOffset(Addr, Off)
+                        //  the last element of index add Off
+                        |   addOffset(BaseOffset, Int) [function]
     syntax Int ::= remainZerosToAdd(BaseOffset) [function]
     //  for Base key index
     syntax BaseMapIdx ::= baseMapIdx(Int, ValueRef)
@@ -288,6 +291,8 @@ module GOLLVM-MEM
     rule bitcastOffset (baseOffset(Base:Int, Idx:List), EndIdx:Int) => baseOffset (Base, prefixOfList(Idx, EndIdx))
     // rule nextElemOffset(baseOffset(Base:Int, Idx:List)) => /*TODO*/
     rule largestStepOffset(baseOffset(Base:Int, Idx:List)) => baseOffset(Base, trimEndZeros(Idx))
+    rule addOffset (Addr:BaseOffset, 0) => Addr
+    rule addOffset (baseOffset(Base:Int, Idxs:List ListItem(Last) .List), Off:Int) => baseOffset (Base, Idxs ListItem(Last +Int Off)) [owise]
 
     rule remainZerosToAdd(Addr:BaseOffset) => cntDepthOf1stUnderlyingType(getTypeOfOffset(Addr))
 

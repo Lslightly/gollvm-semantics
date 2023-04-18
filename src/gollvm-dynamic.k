@@ -67,7 +67,7 @@ module GOLLVM-DYNAMIC
 
     rule castIntPrim(V:LocalName) => {lookUpPrim(V)}:>Int requires toIntCastable(V)
     rule castIntPrim(V:Int) => V
-    rule toIntCastable (V:LocalName) => isIntSort(lookUpPrim(V)) requires isPrim(V)
+    rule [TtoIntCastable]: toIntCastable (V:LocalName) => isIntSort(lookUpPrim(V)) requires isPrim(V)
     rule toIntCastable (_:Int) => true
     rule toIntCastable (_) => false [owise]
 endmodule

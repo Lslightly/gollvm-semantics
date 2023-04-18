@@ -34,7 +34,7 @@ module GOLLVM-DYN-INSTS
     imports GOLLVM-CALL
     imports LIST
     rule <k> execInst(I) => . ...</k>
-        <warnings> ... .List => ListItem(warn(I, "not modeled"))</warnings> [priority(100)]
+        <warnings> ... .List => ListItem(warn(I, "not modeled"))</warnings> [priority(201)]
 
     rule getGepIdxList(_:OptInRange _:Type V:ValueRef , Remains:ReturnedValGep) => ListItem(castIntPrim(V)) getGepIdxList(Remains) requires toIntCastable(V)
     rule getGepIdxList(.ReturnedValGep) => .List
@@ -174,6 +174,12 @@ module GOLLVM-NORMAL-INSTS
         <local2Base>
             Local2Base => Local2Base [ Dst <- appendOffset({addressValOf(Src)}:>BaseOffset, getGepIdxList(IdxList)) ]
         </local2Base>
+    rule [TgepNonZero]:
+        <k>
+            execInst(Dst:LocalName = getelementptr _:OptInBounds _:Type , _:OptInRange _:Type Src:LocalName, _:OptInRange _:Type V:ValueRef , IdxList:ReturnedValGep _:InstructionMetadatas)
+        =>
+            addrMapInsert (Dst, appendOffset(addOffset({addressValOf(Src)}:>BaseOffset, castIntPrim(V)), getGepIdxList(IdxList))) ...
+        </k> requires toIntCastable(V) [priority(51)]
     
     rule [Tzexttrue]:
         <k>
