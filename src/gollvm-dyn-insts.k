@@ -92,10 +92,6 @@ module GOLLVM-NORMAL-INSTS
     rule [Ticmpuge]: <k> execInst(Dst:LocalName = icmp uge _:Type L1:ValueRef , L2:ValueRef _:InstructionMetadatas)
     =>
         updatePrim (Dst, castIntPrim(L1) >=Int castIntPrim(L2)) ... </k>
-    rule [Ticmpnull]: <k>
-        execInst (Dst:LocalName = icmp eq _:Type _:LocalName, null _:InstructionMetadatas)
-        =>
-        updatePrim (Dst, false) ...  </k>
     
     rule [Tptrtoint]: <k> execInst (Dst:LocalName = ptrtoint _:Type Src:LocalName to _:Type _:InstructionMetadatas) => addrAlias(Dst, Src) ...</k>
 
@@ -104,7 +100,7 @@ module GOLLVM-NORMAL-INSTS
     rule [Tload]: <k>
         execInst (Dst:LocalName = load _:OptVolatile _:Type , _:Type Src:LocalName, _:Align _:InstructionMetadatas)
         => . ...  </k>
-        <local2Base>
+        <local2Base>alt l
             Local2Base => Local2Base [ Dst <- readObjAtLocalV(Src) ]
         </local2Base>
         requires isAddr(Src) andBool (readObjAtLocalV (Src) =/=K uninit andBool (notBool isNonAddrSort(readObjAtLocalV(Src))))
