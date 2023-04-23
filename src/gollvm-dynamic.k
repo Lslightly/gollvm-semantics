@@ -4,6 +4,9 @@ requires "gollvm-dynamic-syntax.k"
 requires "gollvm-dyn-insts.k"
 
 
+/*
+    动态语义部分的控制流执行基本框架
+*/
 module GOLLVM-DYNAMIC
     imports GOLLVM-SYNTAX
     imports GOLLVM-CONFIGURATION

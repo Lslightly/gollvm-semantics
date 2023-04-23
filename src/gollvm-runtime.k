@@ -4,6 +4,9 @@ requires "gollvm-call.k"
 requires "gollvm-dyn-insts.k"
 requires "gollvm-mem.k"
 
+/*
+    运行时函数用到的抽象语法结构和函数
+*/
 module GOLLVM-RUNTIME-SYNTAX
     imports GOLLVM-SYNTAX
     imports GOLLVM-CALL-SYNTAX
@@ -14,6 +17,9 @@ module GOLLVM-RUNTIME-SYNTAX
     syntax KItem ::= mapassign(LocalName, LocalName, ValueRef)
 endmodule
 
+/*
+    将call指令的预处理结构进一步进行预处理得到运行时函数的抽象语法结构
+*/
 module RUNTIME-PREPROCESS
     imports GOLLVM-CALL-SYNTAX
     imports GOLLVM-RUNTIME-SYNTAX
@@ -36,6 +42,9 @@ module RUNTIME-PREPROCESS
     </k>
 endmodule
 
+/*
+    运行时函数的语义规则
+*/
 module GOLLVM-RUNTIME
     imports GOLLVM-RUNTIME-SYNTAX
     imports GOLLVM-MEM

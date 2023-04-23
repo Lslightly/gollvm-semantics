@@ -4,6 +4,7 @@ requires "gollvm-dynamic-syntax.k"
 requires "gollvm-call.k"
 requires "gollvm-mem.k"
 
+//  dyn-insts的统一import模块
 module DYN-INSTS-INCLUDE
     imports GOLLVM-SYNTAX
     imports GOLLVM-CONFIGURATION
@@ -12,6 +13,7 @@ module DYN-INSTS-INCLUDE
     imports GOLLVM-MEM
 endmodule
 
+//  dyn-insts会使用的抽象语法结构和函数
 module GOLLVM-DYN-INSTS-SYNTAX
     imports GOLLVM-SYNTAX
     imports GOLLVM-DYNAMIC-SYNTAX
@@ -27,6 +29,7 @@ module GOLLVM-DYN-INSTS-SYNTAX
     syntax List ::= getGepIdxList(ReturnedValGep) [function]
 endmodule
 
+//  dyn-insts总模块
 module GOLLVM-DYN-INSTS
     imports GOLLVM-DYN-INSTS-SYNTAX
     imports GOLLVM-NORMAL-INSTS
@@ -229,6 +232,9 @@ module TERM-INSTS-SYNTAX
                     |br(LabelString)
 endmodule
 
+/*
+    gollvm跳转指令建模
+*/
 module GOLLVM-TERM-INSTS
     imports TERM-INSTS-SYNTAX
     imports GOLLVM-DYN-INSTS-SYNTAX

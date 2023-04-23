@@ -9,7 +9,9 @@ module GOLLVM-MEM-INCLUDE
     imports GOLLVM-DYNAMIC-SYNTAX
 endmodule
 
-
+/*
+    非地址值相关语法和函数
+*/
 module NON-ADDR-SYNTAX
     imports GOLLVM-MEM-INCLUDE
 
@@ -32,6 +34,9 @@ module NON-ADDR
     
 endmodule
 
+/*
+    对象object相关语法和函数
+*/
 module OBJECT-SYNTAX
     imports GOLLVM-MEM-SYNTAX
     imports GOLLVM-MEM-INCLUDE
@@ -88,7 +93,7 @@ module OBJECT-SYNTAX
     syntax Address ::= readObjMap(BaseMapIdx) [function]
     //  obj/localname idx list
     syntax Content ::=  readObjList(BaseOffset) [function]
-                    |   readObjAtAddr(Address) [function]
+                    |   readContentAtAddr(Address) [function]
                     |   readObjAtLocalV(LocalName) [function]
                     |   getContentElemMultiDim(Content, List) [function]
 
@@ -171,9 +176,9 @@ module OBJECT
         <mem>
             ... Base |-> object (_:ObjectType, _:Bool, Cont, _:Map, _:Location) ...
         </mem>
-    rule readObjAtAddr (Addr:BaseOffset) => readObjList (Addr)
-    rule readObjAtAddr (Addr:BaseMapIdx) => readObjMap (Addr)
-    rule [TreadObjAtLocalV]: readObjAtLocalV(L:LocalName) => readObjAtAddr(addressValOf(L))
+    rule readContentAtAddr (Addr:BaseOffset) => readObjList (Addr)
+    rule readContentAtAddr (Addr:BaseMapIdx) => readObjMap (Addr)
+    rule [TreadObjAtLocalV]: readObjAtLocalV(L:LocalName) => readContentAtAddr(addressValOf(L))
 
     rule [TgetContentElemMultiDimOneIdx]: getContentElemMultiDim (Src:List, ListItem(I:Int) .List) => {Src[I]}:>Content [priority(50)]
     rule [TgetContentElemMultiDimMultiIdx]:getContentElemMultiDim (Src:List, ListItem(I:Int) Remains:List) => getContentElemMultiDim({Src[I]}:>List, Remains) [priority(51)]
@@ -212,7 +217,7 @@ module OBJECT
 
     rule [Tdocopy]:
     <k>
-        docopy (DstPtr:BaseOffset, SrcPtr:BaseOffset) => updateObjList(DstPtr, readObjAtAddr(SrcPtr)) ...
+        docopy (DstPtr:BaseOffset, SrcPtr:BaseOffset) => updateObjList(DstPtr, readContentAtAddr(SrcPtr)) ...
     </k>
 
     rule [TgetMatchTypeOffset]: getMatchTypeOffset(Size:Int, Addr:BaseOffset) => Addr
@@ -230,6 +235,9 @@ module OBJECT
     
 endmodule
 
+/*
+    内存相关语法
+*/
 module GOLLVM-MEM-SYNTAX
     imports GOLLVM-MEM-INCLUDE
     imports LLVM-TYPE-DYNAMIC-SYNTAX

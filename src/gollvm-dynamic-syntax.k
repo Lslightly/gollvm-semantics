@@ -27,6 +27,13 @@ module LLVM-TYPE-DYNAMIC-SYNTAX
 
 endmodule
 
+/*
+    类型相关操作
+    创建类型对应的Content
+    获得类型大小
+    子类型
+    获取嵌套类型深度等
+*/
 module LLVM-TYPE-DYNAMIC
     imports LLVM-TYPE-DYNAMIC-SYNTAX
     imports OBJECT-SYNTAX
@@ -96,6 +103,9 @@ module LLVM-TYPE-DYNAMIC
 
 endmodule
 
+/*
+    在动态语义部分用到的语法结构和函数
+*/
 module GOLLVM-DYNAMIC-SYNTAX
     imports GOLLVM-SYNTAX
     imports LIST

@@ -3,6 +3,9 @@ requires "gollvm-configuration.k"
 requires "gollvm-dynamic-syntax.k"
 requires "gollvm-runtime.k"
 
+/*
+    call指令的抽象语法结构
+*/
 module GOLLVM-CALL-SYNTAX
     imports GOLLVM-SYNTAX
     imports GOLLVM-DYNAMIC-SYNTAX
@@ -13,6 +16,9 @@ module GOLLVM-CALL-SYNTAX
     syntax KItem ::= VoidGlobalCall(GlobalName, ParamList)
 endmodule
 
+/*
+    call指令预处理，将IR指令处理为抽象语法结构
+*/
 module CALL-PREPROCESS
     imports GOLLVM-CALL-SYNTAX
     imports GOLLVM-CONFIGURATION
@@ -32,12 +38,15 @@ module CALL-PREPROCESS
     </k>
 endmodule
 
-//  for function call
+/*
+    对call指令的处理
+*/
 module GOLLVM-CALL
     imports CALL-PREPROCESS
     imports GOLLVM-CALL-SYNTAX
     imports GOLLVM-RUNTIME
 
+    //  未被处理的call指令当做error处理
     rule <k> VoidGlobalCall (_:GlobalName, _:ParamList) #as Call => . ...</k>
         <errors> ... .List => ListItem(error(Call, "not modeled")) </errors> [owise]
     rule <k> NonVoidGlobalCall(_:LocalName, _:Type, _:GlobalName, _:ParamList) #as Call => . ...</k>
