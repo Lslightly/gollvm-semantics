@@ -1,6 +1,7 @@
 requires "gollvm-syntax.k"
 requires "gollvm-configuration.k"
 requires "gollvm-mem.k"
+requires "gollvm-object.k"
 
 module LLVM-TYPE-DYNAMIC-SYNTAX
     imports GOLLVM-SYNTAX

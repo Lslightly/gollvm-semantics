@@ -3,6 +3,7 @@ requires "gollvm-configuration.k"
 requires "gollvm-call.k"
 requires "gollvm-dyn-insts.k"
 requires "gollvm-mem.k"
+requires "gollvm-object.k"
 
 /*
     运行时函数用到的抽象语法结构和函数
