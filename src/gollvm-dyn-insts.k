@@ -85,7 +85,13 @@ module GOLLVM-NORMAL-INSTS
     imports INT
     imports K-EQUAL
 
-    rule [Tbitcast]: <k> execInst(Dst:LocalName = bitcast _:Type Src:LocalName to _:Type _:InstructionMetadatas) => addrMapInsert (Dst, largestStepOffset({addressValOf(Src)}:>BaseOffset)) ...</k> requires isAddr(Src)
+    rule [Tbitcasti8]: <k> execInst(Dst:LocalName = bitcast _:Type Src:LocalName to Ty:Type _:OptAddrSpace * _:InstructionMetadatas) => addrMapInsert (Dst, largestStepOffset({addressValOf(Src)}:>BaseOffset)) ...</k> requires isi8(Ty) andThenBool isAddr(Src) [priority(51)]
+
+    rule [Tbitcast]: <k>
+        execInst(Dst:LocalName = bitcast _:Type Src:LocalName to DstPointsToType:Type _:OptAddrSpace * _:InstructionMetadatas)
+    =>
+        addrMapInsert (Dst, bitcastOffset({addressValOf (Src)}:>BaseOffset, cntNumIdxToType(readObjAtLocalV(Src), DstPointsToType))) ...
+    </k> requires notBool isi8(DstPointsToType) andBool isAddr(Src)
     
     rule [Ticmpeq]: <k> execInst(Dst:LocalName = icmp eq _:Type L1:ValueRef , L2:ValueRef _:InstructionMetadatas)
     =>
@@ -134,10 +140,7 @@ module GOLLVM-NORMAL-INSTS
 
     rule [Tload]: <k>
         execInst (Dst:LocalName = load _:OptVolatile _:Type , _:Type Src:LocalName, _:Align _:InstructionMetadatas)
-        => . ...  </k>
-        <local2Base>
-            Local2Base => Local2Base [ Dst <- readObjAtLocalV(Src) ]
-        </local2Base>
+        => addrMapInsert(Dst, {readObjAtLocalV(Src)}:>Address) ...  </k>
         requires isAddr(Src) andBool (readObjAtLocalV (Src) =/=K uninit andBool (notBool isNonAddrSort(readObjAtLocalV(Src))))
 
     rule [Tloadprim]:
@@ -192,16 +195,16 @@ module GOLLVM-NORMAL-INSTS
     
     rule [Tgep]:
         <k>
-            execInst(Dst:LocalName = getelementptr _:OptInBounds _:Type , _:OptInRange _:Type Src:LocalName, _:OptInRange _:Type 0 , IdxList:ReturnedValGep _:InstructionMetadatas) => . ...
+            execInst(Dst:LocalName = getelementptr _:OptInBounds _:Type , _:OptInRange SrcPointsToType _:OptAddrSpace * Src:LocalName, _:OptInRange _:Type 0 , IdxList:ReturnedValGep _:InstructionMetadatas) => . ...
         </k>
         <local2Base>
-            Local2Base => Local2Base [ Dst <- appendOffset({addressValOf(Src)}:>BaseOffset, getGepIdxList(IdxList)) ]
+            Local2Base => Local2Base [ Dst <- appendOffset(bitcastOffset({addressValOf(Src)}:>BaseOffset, cntNumIdxToType(readObjAtLocalV(Src), SrcPointsToType)), getGepIdxList(IdxList)) ]
         </local2Base>
     rule [TgepNonZero]:
         <k>
-            execInst(Dst:LocalName = getelementptr _:OptInBounds _:Type , _:OptInRange _:Type Src:LocalName, _:OptInRange _:Type V:ValueRef , IdxList:ReturnedValGep _:InstructionMetadatas)
+            execInst(Dst:LocalName = getelementptr _:OptInBounds _:Type , _:OptInRange SrcPointsToType _:OptAddrSpace * Src:LocalName, _:OptInRange _:Type V:ValueRef , IdxList:ReturnedValGep _:InstructionMetadatas)
         =>
-            addrMapInsert (Dst, appendOffset(addOffset({addressValOf(Src)}:>BaseOffset, castIntPrim(V)), getGepIdxList(IdxList))) ...
+            addrMapInsert (Dst, appendOffset(addOffset(bitcastOffset({addressValOf(Src)}:>BaseOffset, cntNumIdxToType(readObjAtLocalV(Src), SrcPointsToType)), castIntPrim(V)), getGepIdxList(IdxList))) ...
         </k> requires toIntCastable(V) [priority(51)]
     
     rule [Tzexttrue]:
@@ -238,6 +241,14 @@ module GOLLVM-NORMAL-INSTS
         <k>
          execInst (Dst:LocalName = trunc _:Type Src:ValueRef to _:Type _:InstructionMetadatas) => updatePrim (Dst, castIntPrim (Src) =/=Int 0) ...
         </k> requires toIntCastable(Src)
+    
+    rule [Tshl]:
+        <k>
+            execInst(Dst:LocalName = shl _:Type LHS:ValueRef, RHS:ValueRef _:InstructionMetadatas)
+        =>
+            updatePrim(Dst, castIntPrim(LHS) <<Int castIntPrim (RHS))
+        ... </k>
+        requires toIntCastable(LHS) andThenBool toIntCastable(RHS)
     
 endmodule
 

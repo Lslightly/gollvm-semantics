@@ -6,6 +6,7 @@ module GOLLVM-SYNTAX
     imports STRING-SYNTAX
     imports BASIC-K
     imports BOOL
+    imports K-EQUAL
 
     /*@
       Define syntactic constructors for non-keyword tokens. 
@@ -703,7 +704,8 @@ module GOLLVM-SYNTAX
     */
     syntax IntType    ::= IntTypePre
                         | LocalName
-    syntax IntTypePre ::=  r"i[1-9][0-9]*" [token]
+    syntax IntTypePre ::=  r"i[1-9][0-9]*" [token, prec(1)]
+                        | StringToIntTypePre(String) [function, total, hook(STRING.string2token)]
     syntax FPType  ::= "float" [token] | "double" [token] | "ppc_fp128" [token] | "fp128" [token]
                      | "x86_fp80" [token] | "half" [token]
     syntax LabelType ::= "label" [token]
@@ -722,6 +724,9 @@ module GOLLVM-SYNTAX
     syntax Type ::= VoidType | NonVoidType
     syntax KResult ::= IntTypePre | LocalVar | LocalValID | FPType | LabelType | VoidType | X86Type | "metadata"
     syntax TypeList ::= List{Type,","} [strict]
+    syntax Bool ::= isi8(Type) [function]
+    rule [Tisi8true]: isi8(Ty:IntTypePre) => (Ty) ==K StringToIntTypePre("i8")
+    rule [Tisi8false]: isi8(_) => false [owise]
 
     syntax Select ::= "select"
     /*@

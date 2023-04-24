@@ -106,5 +106,6 @@ module GOLLVM-RUNTIME
         ... </k>
         requires toPrimCastable(Cap)
 
+    //  TODO typedslicecopy
 
 endmodule
