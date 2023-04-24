@@ -133,6 +133,7 @@ module OBJECT
     
     rule isValidBaseOffset(baseOffset(Base:Int, IdxList:List)) => isValidTypeIdx (getObjType(searchObjAtBase(Base)), IdxList)
     
+    rule cntNumIdxToType(uninit, _:Type) => 0
     rule cntNumIdxToType(C:List, T:Type) => cnt1stItemDim(C) -Int cntDepthOf1stUnderlyingType(T)
 
     rule getTypeOfOffset(baseOffset (Base:Int, IdxList)) => subType(getObjType (searchObjAtBase(Base)), IdxList)
@@ -177,9 +178,41 @@ module OBJECT
     rule [TupdateObjAtBaseOffset]: <k> updateObjAtAddr(Addr:BaseOffset, NewVal) => updateObjList (Addr, NewVal) ...</k>
     rule [TupdateObjAtBaseMapIdx]: <k> updateObjAtAddr(Addr:BaseMapIdx, NewAddr:Address) => updateObjMap(Addr, NewAddr) ...</k>
 
+/*
+    ---------------------------
+    updateContentMultiDim (_:Content, _:List, _:Content)
+*/
+
     rule [TupdateContentEmptyIdx]: updateContentMultiDim(_:Content, .List, NewVal) => NewVal [priority(50)]
-    rule [TupdateContentOneIdx]: updateContentMultiDim (Src:List, ListItem(I:Int) .List, NewVal) => Src [ I <- NewVal] [priority(51)]
-    rule [TupdateContentMultiIdx]: updateContentMultiDim (Src:List, ListItem(I:Int) RemainIdxs:List, NewVal:Content) => Src [ I <- updateContentMultiDim ({Src[I]}:>List, RemainIdxs, NewVal)] [priority(52)]
+
+    rule [TupdateContentOneIdx]: updateContentMultiDim (Src:List, ListItem(I:Int) .List, NewVal)
+    =>
+        Src [ I <- NewVal]
+        requires I <Int size(Src) [priority(51)]
+    rule [TupdateContentOneIdxOutOfRange]: updateContentMultiDim (Src:List, ListItem(I:Int) .List, NewVal)
+    =>
+        Src makeList(I -Int size(Src), uninit) ListItem(NewVal)
+        requires I >=Int size(Src) [priority(51)]
+    
+    rule [TupdateContentMultiIdx]: updateContentMultiDim (Src:List, ListItem(I:Int) RemainIdxs:List, NewVal:Content)
+    =>
+        Src [ I <- updateContentMultiDim ({Src[I]}:>List, RemainIdxs, NewVal)]
+        requires I <Int size(Src) [priority(52)]
+    rule [TupdateContentMultiIdxOutOfRange]: updateContentMultiDim(Src:List, ListItem(I:Int) RemainIdxs:List, NewVal)
+    =>
+        Src makeList(I -Int size(Src), uninit) ListItem(updateContentMultiDim(uninit, RemainIdxs, NewVal))
+        requires I >=Int size(Src) [priority(52)]
+
+    rule [TupdateContentNotList]: updateContentMultiDim (OldC:Content, ListItem(I:Int) RemainIdxs:List, NewVal) 
+    =>
+        makeList(I, uninit) ListItem(updateContentMultiDim(OldC, RemainIdxs, NewVal))
+        requires notBool isListSort(OldC) [priority(53)]
+
+/*
+    updateContentMultiDim
+    -------------------------
+    copy
+*/
 
     rule [Tcopy]:
     <k>

@@ -57,6 +57,7 @@ module GOLLVM-MEM-SYNTAX
                         //  cast baseOffset(Base, IdxList) to baseOffset(Base, prefixOfList(IdxList, num of idxes))
                         |   bitcastOffset(BaseOffset, Int) [function]
                         |   nextElemOffset(BaseOffset) [function]
+                        //  trim all zeros at the end
                         |   largestStepOffset(BaseOffset) [function]
                         //  addOffset(Addr, Off)
                         //  the last element of index add Off
@@ -102,7 +103,7 @@ module GOLLVM-MEM
     rule appendOffset (baseOffset(Base:Int, Idx1:List), Idx2:List) => baseOffset (Base, Idx1 Idx2)
     rule bitcastOffset (baseOffset(Base:Int, Idx:List), EndIdx:Int) => baseOffset (Base, prefixOfList(Idx, EndIdx))
     // rule nextElemOffset(baseOffset(Base:Int, Idx:List)) => /*TODO*/
-    rule largestStepOffset(baseOffset(Base:Int, Idx:List)) => baseOffset(Base, trimEndZeros(Idx))
+    rule [TlargestStepOffset]: largestStepOffset(baseOffset(Base:Int, Idx:List)) => baseOffset(Base, trimEndZeros(Idx))
     rule addOffset (Addr:BaseOffset, 0) => Addr
     rule addOffset (baseOffset(Base:Int, Idxs:List ListItem(Last) .List), Off:Int) => baseOffset (Base, Idxs ListItem(Last +Int Off)) [owise]
 

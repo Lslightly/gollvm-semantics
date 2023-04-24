@@ -23,8 +23,15 @@ module GOLLVM-DYN-INSTS-SYNTAX
     imports LIST
 
     //  instructions
-    syntax LocalName ::= getPhiValueFromBlock(Map, LabelString) [function]
-    syntax Map ::= extractPhiMap(Map, LocalName) [function]
+    syntax ValueRef ::= getPhiValueFromBlock(Map, LabelString) [function]
+
+    syntax Map ::= 
+                   /*
+                        extracPhiMap(PhiInstMaps, Dst)
+                        Dst |-> LabelString |-> Src
+                   */
+                   extractPhiMap(Map, LocalName) [function]
+                |  getPhiMap() [function]
 
     syntax List ::= getGepIdxList(ReturnedValGep) [function]
 endmodule
@@ -39,8 +46,36 @@ module GOLLVM-DYN-INSTS
     rule <k> execInst(I) => . ...</k>
         <warnings> ... .List => ListItem(warn(I, "not modeled"))</warnings> [priority(201)]
 
+    rule getPhiValueFromBlock(M:Map, L:LabelString) => {M[L]}:>ValueRef
+    rule extractPhiMap (M:Map, Dst:LocalName) => {M[Dst]}:>Map
+
+    rule [[ getPhiMap() => PhiMap ]]
+        <functions>
+            ...
+            <function>
+                ...
+                <functionName>CurrFunc</functionName>
+                <basicBlocks>
+                    ...
+                    <basicBlock>
+                        ...
+                        <blockName> CurrBlock </blockName>
+                        <phiMap> PhiMap:Map </phiMap>
+                        ...
+                    </basicBlock>
+                    ...
+                </basicBlocks>
+                ...
+            </function>
+            ...
+        </functions>
+        <currFunc> CurrFunc </currFunc>
+        <currBlock> CurrBlock </currBlock>
+
+
     rule getGepIdxList(_:OptInRange _:Type V:ValueRef , Remains:ReturnedValGep) => ListItem(castIntPrim(V)) getGepIdxList(Remains) requires toIntCastable(V)
     rule getGepIdxList(.ReturnedValGep) => .List
+    
 endmodule
 
 //  for normal insts like add, gep
@@ -50,7 +85,7 @@ module GOLLVM-NORMAL-INSTS
     imports INT
     imports K-EQUAL
 
-    rule [Tbitcast]: <k> execInst(Dst:LocalName = bitcast _:Type Src:LocalName to DstPtrType:Type _:InstructionMetadatas) => addrMapInsert (Dst, bitcastOffset ({addressValOf(Src)}:>BaseOffset, cntNumIdxToType(readObjAtLocalV(Src), DstPtrType))) ...</k> requires isAddr(Src)
+    rule [Tbitcast]: <k> execInst(Dst:LocalName = bitcast _:Type Src:LocalName to _:Type _:InstructionMetadatas) => addrMapInsert (Dst, largestStepOffset({addressValOf(Src)}:>BaseOffset)) ...</k> requires isAddr(Src)
     
     rule [Ticmpeq]: <k> execInst(Dst:LocalName = icmp eq _:Type L1:ValueRef , L2:ValueRef _:InstructionMetadatas)
     =>
@@ -100,7 +135,7 @@ module GOLLVM-NORMAL-INSTS
     rule [Tload]: <k>
         execInst (Dst:LocalName = load _:OptVolatile _:Type , _:Type Src:LocalName, _:Align _:InstructionMetadatas)
         => . ...  </k>
-        <local2Base>alt l
+        <local2Base>
             Local2Base => Local2Base [ Dst <- readObjAtLocalV(Src) ]
         </local2Base>
         requires isAddr(Src) andBool (readObjAtLocalV (Src) =/=K uninit andBool (notBool isNonAddrSort(readObjAtLocalV(Src))))
@@ -112,33 +147,22 @@ module GOLLVM-NORMAL-INSTS
             . ... </k>
         <local2prim>
             PRIM => PRIM [ Dst <- trimWrapperNonAddr(readObjAtLocalV(Src)) ]
-        </local2prim> requires isAddr(Src) andBool isNonAddrSort(readObjAtLocalV(Src))    
+        </local2prim>
+    requires isAddr(Src) andBool isNonAddrSort(readObjAtLocalV(Src))    
     
-    rule [Tphi]: <k>
-        execInst (Dst:LocalName = phi _:Type _:PHIList _:InstructionMetadatas)
-        => addrAlias(Dst, getPhiValueFromBlock (extractPhiMap (PhiMap, Dst), LastBlock:LabelString)) ...  </k>
-        <functions>
-            ...
-            <function>
-                ...
-                <functionName>CurrFunc</functionName>
-                <basicBlocks>
-                    ...
-                    <basicBlock>
-                        ...
-                        <blockName> CurrBlock </blockName>
-                        <phiMap> PhiMap:Map </phiMap>
-                        ...
-                    </basicBlock>
-                    ...
-                </basicBlocks>
-                ...
-            </function>
-            ...
-        </functions>
-        <currFunc> CurrFunc </currFunc>
-        <lastBlock> LastBlock </lastBlock>
-        <currBlock> CurrBlock </currBlock>
+    rule [TphiAddr]: <k>
+        execInst(Dst:LocalName = phi _:Type _:PHIList _:InstructionMetadatas)
+    =>
+        addrAlias(Dst, {getPhiValueFromBlock(extractPhiMap (getPhiMap(), Dst), getLastBlock())}:>LocalName)
+        ...  </k>
+    requires isLocalNameSort(getPhiValueFromBlock(extractPhiMap (getPhiMap(), Dst), getLastBlock())) andThenBool isAddr({getPhiValueFromBlock(extractPhiMap (getPhiMap(), Dst), getLastBlock())}:>LocalName)
+    
+    rule [TphiPrim]: <k>
+        execInst(Dst:LocalName = phi _:Type _:PHIList _:InstructionMetadatas)
+    =>
+        updatePrim(Dst, castPrim(getPhiValueFromBlock(extractPhiMap(getPhiMap(), Dst), getLastBlock())))
+        ... </k>
+    requires toPrimCastable(getPhiValueFromBlock(extractPhiMap(getPhiMap(), Dst), getLastBlock()))
     
     rule [TstoreLocalNameAddr]: <k>
         execInst(store _:OptVolatile _:Type V:LocalName , _:Type Loc:LocalName , _:Align _:InstructionMetadatas) => storeAddress (Loc, V) ... </k>
@@ -214,9 +238,6 @@ module GOLLVM-NORMAL-INSTS
         <k>
          execInst (Dst:LocalName = trunc _:Type Src:ValueRef to _:Type _:InstructionMetadatas) => updatePrim (Dst, castIntPrim (Src) =/=Int 0) ...
         </k> requires toIntCastable(Src)
-    
-    rule getPhiValueFromBlock (M:Map, L:LabelString) => {M[L]}:>LocalName
-    rule extractPhiMap (M:Map, Dst:LocalName) => {M[Dst]}:>Map
     
 endmodule
 

@@ -116,6 +116,7 @@ module GOLLVM-DYNAMIC-SYNTAX
     imports MAP
     imports K-EQUAL
     syntax KItem ::= evalBlock(LabelString) | evalFunc(GlobalName) | evalInsts(List) | evalTermInst(BBTerminatorInstruction) | execInst(Instruction)
+    syntax LabelString ::= getLastBlock() [function]
 
     syntax KItem ::= warn(KItem, String) | error(KItem, String) | heap2stack(KItem, KItem, KItem)
 
@@ -133,7 +134,9 @@ module GOLLVM-DYNAMIC-SYNTAX
 // properties:
     syntax Bool ::= isListSort(KItem) [function]
                 |   isValidIdx(List, Int) [function]
+                |   existInList(List, KItem) [function]
     syntax Int ::= cnt1stItemDim(List) [function]
+                //  return index if found else size(List)
                 |   find1stIdx(List, KItem) [function]
 // read:
                 //  src, idx list
@@ -169,9 +172,11 @@ module GOLLVM-DYNAMIC-SYNTAX
     rule cnt1stItemDim (.List) => 0
     rule cnt1stItemDim(ListItem(I) _:List) => 1 +Int cnt1stItemDim ({I}:>List) requires isListSort(I)
     rule cnt1stItemDim (ListItem(_) _:List) => 1 [owise]
-    rule find1stIdx (.List, _) => 1 [priority(49)]
+
+    rule find1stIdx(.List, _) => 0 [priority(49)]
     rule find1stIdx(ListItem(I) _:List, Val:KItem) => 0 requires I ==K Val
-    rule find1stIdx(ListItem(_) Remains:List, Val:KItem) => 1 +Int find1stIdx (Remains, Val) [owise]
+    rule find1stIdx(ListItem(_) Remains:List, Val:KItem) => 1 +Int find1stIdx(Remains, Val) [owise]
+    rule existInList(L:List, Val:KItem) => find1stIdx(L, Val) =/=K size(L)
 
 //  update:------------------------------------------
     rule [TupdateListEmptyIdx]:updateListMultiDim (_, .List, NewVal:KItem) => ListItem(NewVal) .List [priority(50)]
@@ -179,11 +184,16 @@ module GOLLVM-DYNAMIC-SYNTAX
     rule [TupdateListMultiIdx]: updateListMultiDim (Src:List, ListItem(I:Int) RemainIdxs:List, NewVal:KItem) => Src [ I <- updateListMultiDim ({Src[I]}:>List, RemainIdxs, NewVal)] [priority(52)]
 
     rule appendZeros (Src:List, Num:Int) => Src makeList(Num, 0)
-    rule prefixOfList(Src:List, EndIdx:Int) => range(Src, 0, size(Src) -Int EndIdx) requires size(Src) >Int EndIdx
-    rule prefixOfList(Src:List, EndIdx:Int) => appendZeros(Src, EndIdx -Int size(Src)) [owise]
+    rule [TprefixOfListInRange]: prefixOfList(Src:List, EndIdx:Int) => range(Src, 0, size(Src) -Int EndIdx) requires size(Src) >=Int EndIdx
+    rule [TprefixOfListOutOfRange]: prefixOfList(Src:List, EndIdx:Int) => appendZeros(Src, EndIdx -Int size(Src)) [owise]
 
-    rule trimEndZeros(L:List) => prefixOfList(L, find1stIdx(L, 0))
+    rule [TtrimEndZerosFound]: trimEndZeros(L:List) => prefixOfList(L, find1stIdx(L, 0)) requires existInList(L, 0)
+    //  not exist zero
+    rule [TtrimEndZerosNotFound]: trimEndZeros(L:List) => L [owise]
 
+    
+    syntax KItem ::= castPrim(ValueRef) [function]
+    syntax Bool ::= toPrimCastable(ValueRef) [function]
     syntax Int ::= castIntPrim(ValueRef) [function]
     syntax Bool ::= toIntCastable(ValueRef) [function]
 endmodule

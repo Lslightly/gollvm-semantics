@@ -27,6 +27,9 @@ module GOLLVM-CONFIGURATION
                             <instructions> .List </instructions>
                             // BBTerminatorInstruction
                             <termInst> .K </termInst>
+                            /* Dst = phi [SrcV:ValueRef, SrcB:LabelString]
+                                PhiMap: Dst |-> LabelString |-> SrcV
+                            */
                             <phiMap> .Map </phiMap>
                         </basicBlock>
                     </basicBlocks>

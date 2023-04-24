@@ -60,6 +60,10 @@ module GOLLVM-SYNTAX
     syntax GlobalVar ::= r"@\\\"[^\\\"]*\\\"" [token]
 
     syntax LocalName ::= LocalVar | LocalValID
+    syntax Bool ::= isLocalNameSort(KItem) [function]
+    rule isLocalNameSort(_:LocalName) => true
+    rule isLocalNameSort(_) => false [owise]
+
     syntax LocalAssign ::= LocalName "="
     syntax GlobalName ::= GlobalVar | GlobalValID
     syntax GlobalAssign ::= GlobalName "="
@@ -405,6 +409,7 @@ module GOLLVM-SYNTAX
                      | "nonnull" [klabel(#nonnullOfReturn)]
     syntax RetAttrs ::= List{RetAttr," "}
 
+    syntax Dereferenceable ::= "dereferenceable" "(" Int ")"
     syntax ParamAttr ::= Align | "sret" | "nocapture" | "byval"
                        | "nest" | "inalloca" | "returned"
                        | "readnone" [klabel(#readnoneOfParam)]
@@ -418,6 +423,9 @@ module GOLLVM-SYNTAX
                        | "writeonly"
                        | "\"go_sret\""
                        | "sret(" Type ")"
+                       | "noundef"
+                       | Dereferenceable
+
     syntax ParamAttrs ::= List{ParamAttr," "}
     syntax KItem ::= ParamAttrs
 
