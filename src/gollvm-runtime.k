@@ -14,8 +14,10 @@ module GOLLVM-RUNTIME-SYNTAX
     imports GOLLVM-MEM-SYNTAX
     imports OBJECT-SYNTAX
     syntax KItem ::= newobject(LocalName, ObjectType)
-    syntax KItem ::= makemap(LocalName, MapType)
-    syntax KItem ::= mapassign(LocalName, LocalName, ValueRef)
+                    |makemap(LocalName, MapType)
+                    |mapassign(LocalName, LocalName, ValueRef)
+                    //  growslice(RetPtr, ElemType, OldArray, Cap)
+                    |growslice(LocalName, ValueRef, LocalName, ValueRef)
 endmodule
 
 /*
@@ -40,6 +42,21 @@ module RUNTIME-PREPROCESS
 
     rule <k>
     VoidGlobalCall (@llvm.memcpy.p0i8.p0i8.i64, _:Type _:ParamAttrs DstPtr:LocalName , _:Type _:ParamAttrs SrcPtr:LocalName, _:Type _:ParamAttrs Size:Int, _:ParamFactor) => copy ({addressValOf(DstPtr)}:>BaseOffset, {addressValOf(SrcPtr)}:>BaseOffset, Size) ...
+    </k>
+
+    rule <k>
+    VoidGlobalCall (@runtime.growslice,
+                    _:Type _:ParamAttrs RetPtr:LocalName,
+                    _:ParamFactor,  //  undef
+                    _:Type _:ParamAttrs ElemType:ValueRef,
+                    _:Type _:ParamAttrs OldArray:LocalName,
+                    _:ParamFactor,  //  OldLen
+                    _:ParamFactor,  //  OldCap
+                    _:Type _:ParamAttrs Cap:ValueRef
+                    )
+    =>
+        growslice(RetPtr, ElemType, OldArray, Cap)
+        ...
     </k>
 endmodule
 
@@ -77,6 +94,17 @@ module GOLLVM-RUNTIME
 
     rule [TmapassignNotExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => newobject (Dst, unknown) ~> updateRefInMap(baseMapIdx (getBase (deref (Hmap)), Key), Dst) ...</k> 
     [owise]
+
+    //  TODO growslice这里的Content没有实际进行增长
+    rule [Tgrowslice]: <k>
+        growslice(RetPtr:LocalName, ElemType:ValueRef, OldArray:LocalName, Cap:ValueRef)
+    =>
+        updateObjListAtLocalV(RetPtr, 0, makearray(ElemType))
+    ~>  updateObjListAtLocalV(RetPtr, 1, nonAddr(castPrim(Cap)))
+    ~>  updateObjListAtLocalV(RetPtr, 2, nonAddr(castPrim(Cap)))
+    ~>  memmoveToHeapAddr(toAddress(readObjAtLocalVWithIdxListWrapper(RetPtr, 0)), addressValOf(OldArray))
+        ... </k>
+        requires toPrimCastable(Cap)
 
 
 endmodule

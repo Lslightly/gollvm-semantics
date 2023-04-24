@@ -156,6 +156,7 @@ module GOLLVM-DYNAMIC-SYNTAX
 
 // create:------------------------------------------
     syntax Ints ::= List{Int, ","}
+    syntax KResult ::= Ints
     rule createIdxList (I:Int, Idxs:Ints) => ListItem(I) createIdxList(Idxs)
     rule createIdxList(.Ints) => .List
 

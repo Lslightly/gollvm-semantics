@@ -7,8 +7,13 @@ module OBJECT-SYNTAX
     imports GOLLVM-MEM-INCLUDE
 
     // header(ObjectType) is a List that contains the pointer to the underlying structure
-    syntax ObjectType ::= ValueRef | MapType | Type | "unknown" | header(ObjectType)
+    syntax ObjectType ::= ValueRef | Type
+                        | "unknown" 
+                        | MapType
+                        | ArrayType
+                        | header(ObjectType) 
     syntax MapType ::= "map" "[" ObjectType "]" ObjectType
+    syntax ArrayType ::= "array" "(" ObjectType ")"
     syntax Location ::= "heap" | "stack"
     
     //  object(TypeDescriptor, SizeConst, Content, Map[Key]AddressOf(Value), WhetherInStack)
@@ -19,7 +24,7 @@ module OBJECT-SYNTAX
     //  `SizeConst == false` means num of elements in object is not constant. We should check MapOfValues. ListOfValues is .List
     syntax Content ::= NonAddr | Address | List | UnInit
     syntax KItem ::= Content
-    syntax KResult ::= Content
+    syntax KResult ::= List
     syntax Object ::= object(ObjectType, Bool, Content, Map, Location)
 
 // create/search:
@@ -61,12 +66,23 @@ module OBJECT-SYNTAX
     syntax Content ::=  readObjList(BaseOffset) [function]
                     |   readContentAtAddr(Address) [function]
                     |   readObjAtLocalV(LocalName) [function]
+                    /*
+                        readObjAtLocalVWithIdxList(V, Idxs)
+                        V's address must be baseoffset
+                    */
+                    |   readObjAtLocalVWithIdxList(LocalName, Ints) [function]
+                    //  lazy evaluated
                     |   getContentElemMultiDim(Content, List) [function]
+    syntax KItem ::= readObjAtLocalVWithIdxListWrapper(LocalName, Ints) [seqstrict]
 
 // update:
     //  ((Addr, IdxList), NewVal)
     //  Addr |-> Object(List[IdxList] <- NewVal)
     syntax KItem ::= updateObjList(BaseOffset, Content) [seqstrict]
+    //  updateObjeListAtLocalV(V, IdxList, NewVal)
+    //  V's Address must be BaseOffset. 
+    //  Assuming the address is baseOffset(Base, Off), this ctor will do updateObjList(baseOffset(Base, Off IdxList), NewVal)
+    syntax KItem ::= updateObjListAtLocalV(LocalName, Ints, KItem) [seqstrict]
     //  updateObjMap((Addr, Key), AddressOfValue)
     //  Addr |-> Object.Map[Key] = AddressOfValue
     syntax KItem ::= updateObjMap(BaseMapIdx, Address) [seqstrict]
@@ -96,6 +112,10 @@ module OBJECT-SYNTAX
 //create:
     //  allocObjAtBase(Base, Object)
     syntax KItem ::= allocObjAtBase(Int, Object)
+    //  allocObjAtBase at current Base and increase Base. return the Object's Base
+    syntax Address ::= allocObj(Object) [strict]
+                    //  makearray(ElemType) BaseOffset
+    syntax KItem ::= makearray(ValueRef) [seqstrict]
 endmodule
 
 module OBJECT
@@ -104,9 +124,10 @@ module OBJECT
     imports K-EQUAL
 
 // create/search:-------------------------------
-    // rule createObjList (ObjTy, Loc) => object (ObjTy, true, /*TODO*/, .Map, Loc)
+    rule createObjList(ObjTy:Type, Loc) => object(ObjTy, true, initOfType(ObjTy), .Map, Loc)
+    rule createObjList(ObjTy, Loc) => object(ObjTy, true, uninit, .Map, Loc) [owise]
 
-    // rule createObjMap (ObjTy, Loc) => object (ObjTy, false, .List, /*TODO*/, Loc)
+    rule createObjMap(ObjTy, Loc) => object (ObjTy, false, .List, .Map, Loc)
 
     rule [[ searchObjAtBase(Addr:Int) => Obj ]]
         <mem>
@@ -151,7 +172,13 @@ module OBJECT
         </mem>
     rule readContentAtAddr (Addr:BaseOffset) => readObjList (Addr)
     rule readContentAtAddr (Addr:BaseMapIdx) => readObjMap (Addr)
+
     rule [TreadObjAtLocalV]: readObjAtLocalV(L:LocalName) => readContentAtAddr(addressValOf(L))
+    rule [TreadObjAtLocalVWithIdxList]: readObjAtLocalVWithIdxList(L:LocalName, Idxs:Ints) => readContentAtAddr(appendOffset({addressValOf(L)}:>BaseOffset, createIdxList(Idxs)))
+    rule [TreadObjAtLocalVWithIdxListWrapper]:
+    <k>
+        readObjAtLocalVWithIdxListWrapper(L:LocalName, Idxs:Ints) => readObjAtLocalVWithIdxList(L, Idxs) ...
+    </k>
 
     rule [TgetContentElemMultiDimOneIdx]: getContentElemMultiDim (Src:List, ListItem(I:Int) .List) => {Src[I]}:>Content [priority(50)]
     rule [TgetContentElemMultiDimMultiIdx]:getContentElemMultiDim (Src:List, ListItem(I:Int) Remains:List) => getContentElemMultiDim({Src[I]}:>List, Remains) [priority(51)]
@@ -172,6 +199,11 @@ module OBJECT
         <mem>
             Mem => Mem [ Base <- updateMapOfObject(searchObjAtBase (Base), Key, ValPtr) ]
         </mem>
+    rule [TupdateObjListAtLocalV]: <k> updateObjListAtLocalV(V:LocalName, Idxs:Ints, NewVal:Content)
+    => 
+        updateObjList(appendOffset(baseOffsetOf(V), createIdxList(Idxs)), NewVal)
+        ... </k>
+        requires isBaseOffsetSort(addressValOf(V))
     
     rule <k> updateRefInMap (Addr:BaseMapIdx, Ref:LocalName) => updateObjMap (Addr, addressValOf(Ref)) ...</k>
     
@@ -243,5 +275,12 @@ module OBJECT
         <mem>
             MAP => MAP [ Base <- O ]
         </mem>
+    rule <k> allocObj(O:Object) => allocObjAtBase(Base, O) ~> baseOffset(Base, .List) ...</k>
+        <nextId> Base => Base +Int 1 </nextId>
+
+    rule [Tmakearray]: <k>
+        makearray(ElemType:ValueRef) => allocObj(createObjList(array(ElemType), heap)) ...
+    </k>
+
     
 endmodule

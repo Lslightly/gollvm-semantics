@@ -865,6 +865,7 @@ module GOLLVM-SYNTAX
      */
     syntax SymbolicValueRef ::= LocalName | GlobalName
     syntax KItem ::= LocalName
+    syntax KResult ::= SymbolicValueRef
 
 
     /*@

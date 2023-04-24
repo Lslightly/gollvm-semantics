@@ -48,11 +48,16 @@ module GOLLVM-MEM-SYNTAX
     syntax Address ::=  BaseOffset
                     |   BaseMapIdx
                     |   addressValOf(LocalName) [function]
+                    |   addressValOfWrapper(LocalName) [seqstrict]
                     |   deref(LocalName) [function]
+                    |   toAddress(KItem) [seqstrict]
+    syntax KItem ::= addressValOfWrapper(LocalName) [seqstrict]
     //  base address + index list
     //  empty list mean pure address with no offset, which represents the whole object
     syntax BaseOffset ::=   baseOffset(Int, List)
                         |   pureAddr(Int) [function]
+                        |   baseOffsetOf(LocalName) [function]
+                        |   baseOffsetOfWrapper(LocalName)
                         |   appendOffset(BaseOffset, List) [function]
                         //  cast baseOffset(Base, IdxList) to baseOffset(Base, prefixOfList(IdxList, num of idxes))
                         |   bitcastOffset(BaseOffset, Int) [function]
@@ -67,11 +72,11 @@ module GOLLVM-MEM-SYNTAX
     syntax BaseMapIdx ::= baseMapIdx(Int, ValueRef)
 
     syntax Int ::=  getBase(Address) [function]
-    syntax KResult ::= Address | BaseOffset | BaseMapIdx
+    syntax KResult ::= BaseOffset | BaseMapIdx
 
     //  addrAlias(dst, src) used to addrAlias dst with src
     syntax KItem ::= addrAlias(LocalName, LocalName)
-                |   addrMapInsert(LocalName, Address)
+                |   addrMapInsert(LocalName, Address) [seqstrict]
     //  store(dst, srcv)
     //  store the address of srcv to dst's object
     syntax KItem ::= storeAddress(LocalName, LocalName)
@@ -79,6 +84,7 @@ module GOLLVM-MEM-SYNTAX
     //  store nonAddr to dst's object
     syntax KItem ::= storeNonAddr(LocalName, NonAddr)
     syntax Bool ::= isAddr(LocalName) [function]
+                |   isBaseOffsetSort(Address) [function]
                 |   isPrim(LocalName) [function]
 
     //  lookup %local in local2prim and return the value
@@ -87,6 +93,12 @@ module GOLLVM-MEM-SYNTAX
 
     //  memmoveToHeap(Dst, Src)，将Src地址值所处的对象全部拷贝到Dst所处的对象中，并更新为Location为heap状态
     syntax KItem ::= memmoveToHeap(LocalName, LocalName)
+                    /*
+                        memmoveToHeap(DstAddr, SrcAddr)
+                        将SrcAddr所处的对象全部拷贝到DstAddr所处的对象中
+                        getBase(DstAddr) |-> searchObjAtAddr(SrcAddr)
+                    */
+                |   memmoveToHeapAddr(KItem, KItem) [seqstrict]
 
 
 endmodule
@@ -98,7 +110,25 @@ module GOLLVM-MEM
     imports OBJECT
     imports K-EQUAL
 
+    rule [[ addressValOf(L:LocalName) => Addr ]]
+        <local2Base>
+            ... L |-> Addr ...
+        </local2Base> requires isAddr(L)
+    
+    rule <k> addressValOfWrapper(L) => addressValOf(L) ...</k>
+
+    rule deref(L:LocalName) => {readObjAtLocalV(L)}:>Address
+
+    rule <k> toAddress(V:Address) => V ...</k>
+    
+
     rule pureAddr (Addr:Int) => baseOffset (Addr, .List)
+    rule baseOffsetOf(L:LocalName) => {addressValOf(L)}:>BaseOffset requires isBaseOffsetSort(addressValOf(L))
+    rule <k>
+        baseOffsetOfWrapper(L:LocalName)
+    =>
+        baseOffsetOf(L)
+        ... </k>
 
     rule appendOffset (baseOffset(Base:Int, Idx1:List), Idx2:List) => baseOffset (Base, Idx1 Idx2)
     rule bitcastOffset (baseOffset(Base:Int, Idx:List), EndIdx:Int) => baseOffset (Base, prefixOfList(Idx, EndIdx))
@@ -116,7 +146,7 @@ module GOLLVM-MEM
         <local2Base>
             MAP
         </local2Base>
-    rule <k> addrMapInsert(Dst:LocalName, Addr:Address) => . ... </k>
+    rule [TaddrMapInsert]: <k> addrMapInsert(Dst:LocalName, Addr:Address) => . ... </k>
         <local2Base>
             MAP => MAP [Dst <- Addr]
         </local2Base>
@@ -142,14 +172,9 @@ module GOLLVM-MEM
             Local2Prim
         </local2prim>
 
+    rule isBaseOffsetSort(_:BaseOffset) => true
+    rule isBaseOffsetSort(_:Address) => false [owise]
 
-    rule [[ addressValOf(L:LocalName) => Addr ]]
-        <local2Base>
-            ... L |-> Addr ...
-        </local2Base> requires isAddr(L)
-
-    rule deref(L:LocalName) => {readObjAtLocalV(L)}:>Address
-    
     rule [[ lookUpPrim (V:LocalName) => Local2Prim[V] ]]
         <local2prim>
             Local2Prim
@@ -159,9 +184,14 @@ module GOLLVM-MEM
             Local2Prim => Local2Prim [L <- V]
         </local2prim>
 
-    rule <k> memmoveToHeap (Dst:LocalName, Src:LocalName)
+    rule [TmemmoveToHeap]: <k> memmoveToHeap(Dst:LocalName, Src:LocalName)
     =>
         allocObjAtBase(getBase(addressValOf(Dst)), moveToHeap(searchObjAtLocalV(Src))) ...</k>
 
+    rule [TmemmoveToHeapAddr]: <k>
+        memmoveToHeapAddr(DstAddr:Address, SrcAddr:Address)
+    =>
+        allocObjAtBase(getBase(DstAddr), moveToHeap(searchObjAtAddr(SrcAddr)))
+        ... </k>
     
 endmodule
