@@ -10,10 +10,8 @@ module OBJECT-SYNTAX
     syntax ObjectType ::= ValueRef | Type
                         | "unknown" 
                         | MapType
-                        | ArrayType
                         | header(ObjectType) 
     syntax MapType ::= "map" "[" ObjectType "]" ObjectType
-    syntax ArrayType ::= "array" "(" ObjectType ")"
     syntax Location ::= "heap" | "stack"
     
     //  object(TypeDescriptor, SizeConst, Content, Map[Key]AddressOf(Value), WhetherInStack)
@@ -34,6 +32,8 @@ module OBJECT-SYNTAX
                     | searchObjAtAddr(Address) [function]
                     | searchObjAtLocalV(LocalName) [function]
                     | moveToHeap(Object) [function]
+                    //  replaceType(OldObj, NewType)
+                    | replaceType(Object, ObjectType) [function]
 
 // properties:
     syntax Bool ::= inHeap(Object) [function]
@@ -99,6 +99,13 @@ module OBJECT-SYNTAX
     */
     syntax Bool ::= canMatchTypeOffset(Int, BaseOffset, Int) [function]
     syntax BaseOffset ::= getMatchTypeOffset(Int, BaseOffset) [function]
+                // minLargestStepOffsetTypeSize(Addr1, Addr2)
+    syntax Int ::= minLargestStepOffsetTypeSize(BaseOffset, BaseOffset) [function]
+
+                    //  updateObjType(Base, ObjectType)
+    syntax KItem ::= updateObjTypeAtBase(Int, KItem) [seqstrict]
+                |    updateObjType(KItem, KItem) [seqstrict]
+                |   updateObjTypeAtLocalV(LocalName, KItem) [seqstrict]
 
     /*
         copy(dstptr, srcptr, size), volatile is ignored
@@ -115,7 +122,7 @@ module OBJECT-SYNTAX
     //  allocObjAtBase at current Base and increase Base. return the Object's Base
     syntax Address ::= allocObj(Object) [strict]
                     //  makearray(ElemType) BaseOffset
-    syntax KItem ::= makearray(ValueRef) [seqstrict]
+                    |  allocUnknownObj()
 endmodule
 
 module OBJECT
@@ -137,6 +144,7 @@ module OBJECT
     rule searchObjAtAddr (baseMapIdx (Base:Int, _:ValueRef)) => searchObjAtBase (Base)
     rule searchObjAtLocalV (L:LocalName) => searchObjAtAddr(addressValOf(L))
     rule moveToHeap (object(Ty, SizeConst, C, M, _:Location)) => object(Ty, SizeConst, C, M, heap)
+    rule replaceType(object(_:ObjectType, SizeConst, C, M, Loc), NewType:ObjectType) => object(NewType, SizeConst, C, M, Loc)
 
 // properties:---------------------------------
     rule inHeap(object(_:ObjectType, _:Bool, _:Content, _:Map, Loc:Location)) => Loc ==K heap
@@ -246,6 +254,32 @@ module OBJECT
     copy
 */
 
+    rule [TcopySplit]: <k>
+        copy(DstPtr:BaseOffset, SrcPtr:BaseOffset, Size:Int)
+    =>  copy(
+            DstPtr,
+            SrcPtr,
+            minLargestStepOffsetTypeSize(DstPtr, SrcPtr)
+            )
+    ~>  copy(
+        addOffset(
+            getMatchTypeOffset(minLargestStepOffsetTypeSize(DstPtr, SrcPtr), largestStepOffset(DstPtr)),
+            1
+        ),
+        addOffset(
+            getMatchTypeOffset(minLargestStepOffsetTypeSize(DstPtr, SrcPtr), largestStepOffset(SrcPtr)),
+            1
+        ),
+        Size -Int minLargestStepOffsetTypeSize(DstPtr, SrcPtr))
+    ...</k>
+    requires Size >Int minLargestStepOffsetTypeSize(DstPtr, SrcPtr)
+
+    rule minLargestStepOffsetTypeSize(LHSPtr, RHSPtr) => minInt(
+                    SizeOfType(getTypeOfOffset(largestStepOffset(LHSPtr))),
+                    SizeOfType(getTypeOfOffset(largestStepOffset(RHSPtr)))
+                )
+
+
     rule [Tcopy]:
     <k>
         copy(DstPtr:BaseOffset, SrcPtr:BaseOffset, Size) => docopy(getMatchTypeOffset(Size, largestStepOffset(DstPtr)), getMatchTypeOffset(Size, largestStepOffset(SrcPtr))) ...
@@ -256,6 +290,14 @@ module OBJECT
     <k>
         docopy (DstPtr:BaseOffset, SrcPtr:BaseOffset) => updateObjList(DstPtr, readContentAtAddr(SrcPtr)) ...
     </k>
+
+/*
+
+    copy
+    --------
+    Match Type Offset
+
+*/
 
     rule [TgetMatchTypeOffset]: getMatchTypeOffset(Size:Int, Addr:BaseOffset) => Addr
         requires SizeOfType(getTypeOfOffset(Addr)) ==Int Size
@@ -268,6 +310,29 @@ module OBJECT
         requires SizeOfType(getTypeOfOffset(Addr)) <Int Size [priority(50)]
     rule [TcanMatchTypeOffsetLast]: canMatchTypeOffset (_, _, 0) => false [priority(51)]
     rule [TcanMatchTypeOffsetRecur]: canMatchTypeOffset (Size, baseOffset (Base:Int, IdxList), RemainZeros:Int) => canMatchTypeOffset (Size, baseOffset (Base, IdxList ListItem(0)), RemainZeros -Int 1) [priority(52)]
+
+/*
+    Match Type Offset
+    ---
+    update Obj Type
+*/
+
+    rule [TupdateObjTypeAtBase]: <k>
+        updateObjTypeAtBase(Base:Int, NewTy:ObjectType)
+    =>
+        .
+    ... </k>
+    <mem>
+        MEM => MEM [Base <- replaceType(searchObjAtBase(Base), NewTy)]
+    </mem>
+
+    rule [TupdateObjType]: <k>
+        updateObjType(Addr:Address, NewTy) => updateObjTypeAtBase(getBase(Addr), NewTy)
+    ... </k>
+
+    rule [TupdateObjTypeAtLocalV]: <k>
+        updateObjTypeAtLocalV (L:LocalName, NewTy:ObjectType) => updateObjType(addressValOf(L), NewTy:ObjectType)
+    ... </k>
     
 //------------------mem
 //create:
@@ -277,10 +342,7 @@ module OBJECT
         </mem>
     rule <k> allocObj(O:Object) => allocObjAtBase(Base, O) ~> baseOffset(Base, .List) ...</k>
         <nextId> Base => Base +Int 1 </nextId>
-
-    rule [Tmakearray]: <k>
-        makearray(ElemType:ValueRef) => allocObj(createObjList(array(ElemType), heap)) ...
-    </k>
+    rule <k> allocUnknownObj() => allocObj(object (unknown, true, uninit, .Map, heap)) ...</k>
 
     
 endmodule

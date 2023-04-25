@@ -42,6 +42,7 @@ endmodule
 module GOLLVM-MEM-SYNTAX
     imports GOLLVM-MEM-INCLUDE
     imports LLVM-TYPE-DYNAMIC-SYNTAX
+    imports GOLLVM-TYPEDESCRIPTOR-SYNTAX
     imports NON-ADDR-SYNTAX
     imports LIST
 
@@ -106,6 +107,7 @@ endmodule
 module GOLLVM-MEM
     imports GOLLVM-MEM-SYNTAX
     imports LLVM-TYPE-DYNAMIC
+    imports GOLLVM-TYPEDESCRIPTOR
     imports NON-ADDR
     imports OBJECT
     imports K-EQUAL

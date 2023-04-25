@@ -250,6 +250,22 @@ module GOLLVM-NORMAL-INSTS
         ... </k>
         requires toIntCastable(LHS) andThenBool toIntCastable(RHS)
     
+    rule [Tselectprim]:
+        <k>
+            execInst(Dst:LocalName = select _:Type Cond:ValueRef, _:Type TrueV:ValueRef, _:Type FalseV:ValueRef _:InstructionMetadatas)
+        =>
+            updatePrim(Dst, #if {castPrim(Cond)}:>Bool #then castPrim(TrueV) #else castPrim(FalseV) #fi)
+        ... </k>
+        requires toPrimCastable(Cond) andThenBool toPrimCastable(TrueV) andThenBool toPrimCastable(FalseV)
+    
+    rule [Tselectaddr]:
+        <k>
+            execInst(Dst:LocalName = select _:Type Cond:ValueRef, _:Type TrueV:LocalName, _:Type FalseV:LocalName _:InstructionMetadatas)
+        =>
+            addrMapInsert(Dst, #if {castPrim(Cond)}:>Bool #then addressValOf(TrueV) #else addressValOf(FalseV) #fi)
+        ... </k>
+        requires toPrimCastable(Cond) andThenBool isAddr(TrueV) andThenBool isAddr(FalseV)
+    
 endmodule
 
 module TERM-INSTS-SYNTAX

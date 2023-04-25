@@ -717,12 +717,13 @@ module GOLLVM-SYNTAX
                          | PrimType
                          | Type OptAddrSpace "*"              [klabel(#pointerType), strict(1)]
                          | Type "(" ArgList ")"               [klabel(#functionType)]
-                         | "[" Int "x" Type "]"
+                         | ArrayType
                          | "<" Int "x" Type ">"
                          | "{" TypeList "}"                   [klabel(#structType), strict]
                          | "<" "{" TypeList "}" ">"           [klabel(#packedStructType), strict]
+    syntax ArrayType ::= "[" Int "x" Type "]"
     syntax Type ::= VoidType | NonVoidType
-    syntax KResult ::= IntTypePre | LocalVar | LocalValID | FPType | LabelType | VoidType | X86Type | "metadata"
+    syntax KResult ::= IntTypePre | LocalVar | LocalValID | FPType | LabelType | VoidType | X86Type | "metadata" | ArrayType
     syntax TypeList ::= List{Type,","} [strict]
     syntax Bool ::= isi8(Type) [function]
     rule [Tisi8true]: isi8(Ty:IntTypePre) => (Ty) ==K StringToIntTypePre("i8")

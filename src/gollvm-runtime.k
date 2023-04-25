@@ -16,8 +16,12 @@ module GOLLVM-RUNTIME-SYNTAX
     syntax KItem ::= newobject(LocalName, ObjectType)
                     |makemap(LocalName, MapType)
                     |mapassign(LocalName, LocalName, ValueRef)
+                    //  memcpy(DstPtr, SrcPtr, Size)
+                    |memcpy(LocalName, LocalName, Int)
                     //  growslice(RetPtr, ElemType, OldArray, Cap)
                     |growslice(LocalName, ValueRef, LocalName, ValueRef)
+                    //  typedslicecopy(CopyLen, Ty, DstPtr, DstLen, SrcPtr, SrcLen)
+                    |typedslicecopy(LocalName, ValueRef, LocalName, ValueRef, LocalName, ValueRef)
 endmodule
 
 /*
@@ -41,7 +45,7 @@ module RUNTIME-PREPROCESS
     => storeAddress(Dst, Src) ... </k>
 
     rule <k>
-    VoidGlobalCall (@llvm.memcpy.p0i8.p0i8.i64, _:Type _:ParamAttrs DstPtr:LocalName , _:Type _:ParamAttrs SrcPtr:LocalName, _:Type _:ParamAttrs Size:Int, _:ParamFactor) => copy ({addressValOf(DstPtr)}:>BaseOffset, {addressValOf(SrcPtr)}:>BaseOffset, Size) ...
+    VoidGlobalCall (@llvm.memcpy.p0i8.p0i8.i64, _:Type _:ParamAttrs DstPtr:LocalName , _:Type _:ParamAttrs SrcPtr:LocalName, _:Type _:ParamAttrs Size:Int, _:ParamFactor) => memcpy(DstPtr, SrcPtr, Size) ...
     </k>
 
     rule <k>
@@ -58,6 +62,19 @@ module RUNTIME-PREPROCESS
         growslice(RetPtr, ElemType, OldArray, Cap)
         ...
     </k>
+
+    rule <k>
+        NonVoidGlobalCall(CopyLen:LocalName, _:Type, @runtime.typedslicecopy,
+                        _:ParamFactor,  //  undef
+                        _:Type _:ParamAttrs Ty:ValueRef, // type descriptor
+                        _:Type _:ParamAttrs DstPtr:LocalName,
+                        _:Type _:ParamAttrs DstLen:ValueRef,
+                        _:Type _:ParamAttrs SrcPtr:LocalName,
+                        _:Type _:ParamAttrs SrcLen:ValueRef
+                        )
+    =>
+        typedslicecopy(CopyLen, Ty, DstPtr, DstLen, SrcPtr, SrcLen)
+    ... </k>
 endmodule
 
 /*
@@ -95,17 +112,30 @@ module GOLLVM-RUNTIME
     rule [TmapassignNotExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => newobject (Dst, unknown) ~> updateRefInMap(baseMapIdx (getBase (deref (Hmap)), Key), Dst) ...</k> 
     [owise]
 
-    //  TODO growslice这里的Content没有实际进行增长
+    rule [Tmemcpy]: <k>
+        memcpy(DstPtr:LocalName, SrcPtr:LocalName, Size:Int)
+    =>
+        copy({addressValOf(DstPtr)}:>BaseOffset, {addressValOf(SrcPtr)}:>BaseOffset, Size)
+    ... </k>
+
+    //  TODO growslice这里的Content没有实际进行增长，但是Type应该进行相应的增长
     rule [Tgrowslice]: <k>
         growslice(RetPtr:LocalName, ElemType:ValueRef, OldArray:LocalName, Cap:ValueRef)
     =>
-        updateObjListAtLocalV(RetPtr, 0, makearray(ElemType))
-    ~>  updateObjListAtLocalV(RetPtr, 1, nonAddr(castPrim(Cap)))
-    ~>  updateObjListAtLocalV(RetPtr, 2, nonAddr(castPrim(Cap)))
+        updateObjListAtLocalV(RetPtr, 0, allocUnknownObj())
+    ~>  updateObjListAtLocalV(RetPtr, 1, nonAddr(castIntPrim(Cap)))
+    ~>  updateObjListAtLocalV(RetPtr, 2, nonAddr(castIntPrim(Cap)))
     ~>  memmoveToHeapAddr(toAddress(readObjAtLocalVWithIdxListWrapper(RetPtr, 0)), addressValOf(OldArray))
+    ~>  updateObjType(toAddress(readObjAtLocalVWithIdxListWrapper(RetPtr, 0)), newLenOfArrayType(getTypeOfOffset(baseOffsetOf(OldArray)), castIntPrim(Cap)))
         ... </k>
-        requires toPrimCastable(Cap)
+        requires toIntCastable(Cap)
 
     //  TODO typedslicecopy
+    rule [Ttypedslicecopy]: <k>
+        typedslicecopy(CopyLen:LocalName, Ty:ValueRef, DstPtr:LocalName, DstLen:ValueRef, SrcPtr:LocalName, SrcLen:ValueRef)
+    =>
+        memcpy(DstPtr, SrcPtr, sizeOfTD(Ty) *Int minInt(castIntPrim(DstLen), castIntPrim(SrcLen)))
+        ~> updatePrim(CopyLen, minInt(castIntPrim(DstLen), castIntPrim(SrcLen)))
+    ... </k> requires toIntCastable(DstLen) andThenBool toIntCastable(SrcLen)
 
 endmodule

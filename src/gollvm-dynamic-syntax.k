@@ -2,6 +2,7 @@ requires "gollvm-syntax.k"
 requires "gollvm-configuration.k"
 requires "gollvm-mem.k"
 requires "gollvm-object.k"
+requires "helper.k"
 
 module LLVM-TYPE-DYNAMIC-SYNTAX
     imports GOLLVM-SYNTAX
@@ -22,6 +23,7 @@ module LLVM-TYPE-DYNAMIC-SYNTAX
                 |   subTypeList(TypeList, List) [function]
                 //  matchSubType(ParentType, Size)
                 |   matchSubType(Type, Int) [function]
+                |   newLenOfArrayType(Type, Int) [function]
     syntax Bool ::= isValidTypeIdx(Type, List) [function]
                 //  List of Type, Idxs
                 |   isValidTypeListIdx(List, List) [function]
@@ -102,6 +104,20 @@ module LLVM-TYPE-DYNAMIC
 
     rule trimPtrType(T:Type _:OptAddrSpace *) => T
 
+    rule newLenOfArrayType([_:Int x T:Type], NewLen:Int) => [NewLen x T]
+
+endmodule
+
+//  for type descriptor in gollvm
+module GOLLVM-TYPEDESCRIPTOR-SYNTAX
+    imports GOLLVM-SYNTAX
+    imports INT
+    syntax Int ::= sizeOfTD(ValueRef) [function]
+endmodule
+
+module GOLLVM-TYPEDESCRIPTOR
+    imports GOLLVM-TYPEDESCRIPTOR-SYNTAX
+    rule sizeOfTD(_:ValueRef) => 8
 endmodule
 
 /*
@@ -115,6 +131,7 @@ module GOLLVM-DYNAMIC-SYNTAX
     imports ARRAY-SYNTAX
     imports MAP
     imports K-EQUAL
+    imports HELPER-SYNTAX
     syntax KItem ::= evalBlock(LabelString) | evalFunc(GlobalName) | evalInsts(List) | evalTermInst(BBTerminatorInstruction) | execInst(Instruction)
     syntax LabelString ::= getLastBlock() [function]
 
