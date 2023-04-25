@@ -198,14 +198,33 @@ module GOLLVM-NORMAL-INSTS
             execInst(Dst:LocalName = getelementptr _:OptInBounds _:Type , _:OptInRange SrcPointsToType _:OptAddrSpace * Src:LocalName, _:OptInRange _:Type 0 , IdxList:ReturnedValGep _:InstructionMetadatas) => . ...
         </k>
         <local2Base>
-            Local2Base => Local2Base [ Dst <- appendOffset(bitcastOffset({addressValOf(Src)}:>BaseOffset, cntNumIdxToType(readObjAtLocalV(Src), SrcPointsToType)), getGepIdxList(IdxList)) ]
+            Local2Base => Local2Base
+            [ Dst <- appendOffset(
+                getMatchTypeOffset(
+                    SizeOfType(SrcPointsToType),
+                    baseOffsetOf(Src)
+                ),
+                getGepIdxList(IdxList)
+            ) ]
         </local2Base>
     rule [TgepNonZero]:
         <k>
             execInst(Dst:LocalName = getelementptr _:OptInBounds _:Type , _:OptInRange SrcPointsToType _:OptAddrSpace * Src:LocalName, _:OptInRange _:Type V:ValueRef , IdxList:ReturnedValGep _:InstructionMetadatas)
         =>
-            addrMapInsert (Dst, appendOffset(addOffset(bitcastOffset({addressValOf(Src)}:>BaseOffset, cntNumIdxToType(readObjAtLocalV(Src), SrcPointsToType)), castIntPrim(V)), getGepIdxList(IdxList))) ...
-        </k> requires toIntCastable(V) [priority(51)]
+            addrMapInsert(
+                Dst,
+                appendOffset(
+                    addOffset(
+                        getTypeMatchedBaseOffset(
+                            SrcPointsToType,
+                            baseOffsetOf(Src)
+                        ),
+                        castIntPrim(V)
+                    ),
+                    getGepIdxList(IdxList)
+                )
+            )
+        ...</k> requires toIntCastable(V) [priority(51)]
     
     rule [Tzexttrue]:
         <k>
