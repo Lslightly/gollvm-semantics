@@ -117,6 +117,7 @@ endmodule
 
 module GOLLVM-TYPEDESCRIPTOR
     imports GOLLVM-TYPEDESCRIPTOR-SYNTAX
+    //TODO complete size of type descriptor
     rule sizeOfTD(_:ValueRef) => 8
 endmodule
 
