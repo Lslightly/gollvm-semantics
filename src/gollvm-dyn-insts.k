@@ -3,6 +3,7 @@ requires "gollvm-configuration.k"
 requires "gollvm-dynamic-syntax.k"
 requires "gollvm-call.k"
 requires "gollvm-mem.k"
+requires "list2list.k"
 
 //  dyn-insts的统一import模块
 module DYN-INSTS-INCLUDE
@@ -21,6 +22,7 @@ module GOLLVM-DYN-INSTS-SYNTAX
     imports STRING-SYNTAX
     imports MAP
     imports LIST
+    imports LIST2LIST-SYNTAX
 
     //  instructions
     syntax ValueRef ::= getPhiValueFromBlock(Map, LabelString) [function]
@@ -34,6 +36,10 @@ module GOLLVM-DYN-INSTS-SYNTAX
                 |  getPhiMap() [function]
 
     syntax List ::= getGepIdxList(ReturnedValGep) [function]
+    /*
+        get size of 
+    */
+    syntax Int ::= sizeOfGepIdxList(Type, ReturnedValGep) [function]
 endmodule
 
 //  dyn-insts总模块
@@ -75,6 +81,16 @@ module GOLLVM-DYN-INSTS
 
     rule getGepIdxList(_:OptInRange _:Type V:ValueRef , Remains:ReturnedValGep) => ListItem(castIntPrim(V)) getGepIdxList(Remains) requires toIntCastable(V)
     rule getGepIdxList(.ReturnedValGep) => .List
+
+    rule sizeOfGepIdxList(T:Type, _:OptInRange _:Type V:ValueRef , Remains:ReturnedValGep)
+    =>
+        castIntPrim(V) *Int SizeOfType(T) +Int sizeOfGepIdxList(subType(T, ListItem(0)), Remains) requires toIntCastable(V)
+    [priority(51)]
+
+    rule sizeOfGepIdxList(T:Type, _:OptInRange _:Type V:ValueRef , .ReturnedValGep)
+    =>
+        castIntPrim(V) *Int SizeOfType(T) requires toIntCastable(V)
+    [priority(50)]
     
 endmodule
 
@@ -90,7 +106,7 @@ module GOLLVM-NORMAL-INSTS
     rule [Tbitcast]: <k>
         execInst(Dst:LocalName = bitcast _:Type Src:LocalName to DstPointsToType:Type _:OptAddrSpace * _:InstructionMetadatas)
     =>
-        addrMapInsert (Dst, bitcastOffset({addressValOf (Src)}:>BaseOffset, cntNumIdxToType(readObjAtLocalV(Src), DstPointsToType))) ...
+        addrMapInsert (Dst, getSizeMatchedOffset(SizeOfType(DstPointsToType), baseOffsetOf(Src))) ...
     </k> requires notBool isi8(DstPointsToType) andBool isAddr(Src)
     
     rule [Ticmpeq]: <k> execInst(Dst:LocalName = icmp eq _:Type L1:ValueRef , L2:ValueRef _:InstructionMetadatas)
@@ -195,36 +211,16 @@ module GOLLVM-NORMAL-INSTS
     
     rule [Tgep]:
         <k>
-            execInst(Dst:LocalName = getelementptr _:OptInBounds _:Type , _:OptInRange SrcPointsToType _:OptAddrSpace * Src:LocalName, _:OptInRange _:Type 0 , IdxList:ReturnedValGep _:InstructionMetadatas) => . ...
-        </k>
-        <local2Base>
-            Local2Base => Local2Base
-            [ Dst <- appendOffset(
-                getMatchTypeOffset(
-                    SizeOfType(SrcPointsToType),
-                    baseOffsetOf(Src)
-                ),
-                getGepIdxList(IdxList)
-            ) ]
-        </local2Base>
-    rule [TgepNonZero]:
-        <k>
-            execInst(Dst:LocalName = getelementptr _:OptInBounds _:Type , _:OptInRange SrcPointsToType _:OptAddrSpace * Src:LocalName, _:OptInRange _:Type V:ValueRef , IdxList:ReturnedValGep _:InstructionMetadatas)
+            execInst(Dst:LocalName = getelementptr _:OptInBounds _:Type , _:OptInRange SrcPointsToType _:OptAddrSpace * Src:LocalName, IdxList:ReturnedValGep _:InstructionMetadatas)
         =>
             addrMapInsert(
                 Dst,
-                appendOffset(
-                    addOffset(
-                        getTypeMatchedBaseOffset(
-                            SrcPointsToType,
-                            baseOffsetOf(Src)
-                        ),
-                        castIntPrim(V)
-                    ),
-                    getGepIdxList(IdxList)
+                addSize(
+                    baseOffsetOf(Src),
+                    sizeOfGepIdxList(SrcPointsToType, IdxList)
                 )
             )
-        ...</k> requires toIntCastable(V) [priority(51)]
+        ...</k>
     
     rule [Tzexttrue]:
         <k>

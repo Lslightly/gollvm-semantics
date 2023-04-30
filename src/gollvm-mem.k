@@ -3,6 +3,7 @@ requires "gollvm-configuration.k"
 requires "gollvm-dynamic-syntax.k"
 requires "gollvm-dyn-insts.k"
 requires "gollvm-object.k"
+requires "list-helper.k"
 
 module GOLLVM-MEM-INCLUDE
     imports GOLLVM-SYNTAX
@@ -52,6 +53,8 @@ module GOLLVM-MEM-SYNTAX
                     |   addressValOfWrapper(LocalName) [seqstrict]
                     |   deref(LocalName) [function]
                     |   toAddress(KItem) [seqstrict]
+                    |   currNewAddr() [function]
+                    |   useNewAddr()
     syntax KItem ::= addressValOfWrapper(LocalName) [seqstrict]
     //  base address + index list
     //  empty list mean pure address with no offset, which represents the whole object
@@ -62,13 +65,30 @@ module GOLLVM-MEM-SYNTAX
                         |   appendOffset(BaseOffset, List) [function]
                         //  cast baseOffset(Base, IdxList) to baseOffset(Base, prefixOfList(IdxList, num of idxes))
                         |   bitcastOffset(BaseOffset, Int) [function]
-                        |   nextElemOffset(BaseOffset) [function]
                         //  trim all zeros at the end
                         |   largestStepOffset(BaseOffset) [function]
                         //  addOffset(Addr, Off)
                         //  the last element of index add Off
                         |   addOffset(BaseOffset, Int) [function]
+                        /*
+                            addSize(Addr, Size)
+                            increase BaseOffset with Size
+                            Size can be larger than sizeof(typeof(BaseOffset))
+                        */
+                        //  TODO check addOffset size
+                        |   addSize(BaseOffset, Int) [function]
+                        /*
+                            input:
+                                baseOffset(B, IdxList Idx)
+                            output:
+                                baseOffset(B, IdxList)
+                        */
+                        |   trimLastIdx(BaseOffset) [function]
+// properties:
     syntax Int ::= remainZerosToAdd(BaseOffset) [function]
+    //  the number of indexes in idxlist of BaseOffset
+    syntax Int ::= numOfIdxs(BaseOffset) [function]
+
     //  for Base key index
     syntax BaseMapIdx ::= baseMapIdx(Int, ValueRef)
 
@@ -111,6 +131,7 @@ module GOLLVM-MEM
     imports NON-ADDR
     imports OBJECT
     imports K-EQUAL
+    imports LIST-HELPER
 
     rule [[ addressValOf(L:LocalName) => Addr ]]
         <local2Base>
@@ -123,6 +144,9 @@ module GOLLVM-MEM
 
     rule <k> toAddress(V:Address) => V ...</k>
     
+    rule currNewAddr() => baseOffset(currBase(), .List)
+    rule <k> useNewAddr() => baseOffset(Base, .List) ...</k>
+        <nextId> Base:Int => Base +Int 1</nextId>
 
     rule pureAddr (Addr:Int) => baseOffset (Addr, .List)
     rule baseOffsetOf(L:LocalName) => {addressValOf(L)}:>BaseOffset requires isBaseOffsetSort(addressValOf(L))
@@ -134,12 +158,14 @@ module GOLLVM-MEM
 
     rule appendOffset (baseOffset(Base:Int, Idx1:List), Idx2:List) => baseOffset (Base, Idx1 Idx2)
     rule bitcastOffset (baseOffset(Base:Int, Idx:List), EndIdx:Int) => baseOffset (Base, prefixOfList(Idx, EndIdx))
-    // rule nextElemOffset(baseOffset(Base:Int, Idx:List)) => /*TODO*/
     rule [TlargestStepOffset]: largestStepOffset(baseOffset(Base:Int, Idx:List)) => baseOffset(Base, trimEndZeros(Idx))
     rule addOffset (Addr:BaseOffset, 0) => Addr
     rule addOffset (baseOffset(Base:Int, Idxs:List ListItem(Last) .List), Off:Int) => baseOffset (Base, Idxs ListItem(Last +Int Off)) [owise]
 
+//  properties:
     rule remainZerosToAdd(Addr:BaseOffset) => cntDepthOf1stUnderlyingType(getTypeOfOffset(Addr))
+
+    rule numOfIdxs(baseOffset(_:Int, IdxList:List)) => size(IdxList)
 
     rule getBase(baseOffset(B:Int, _:List)) => B
     rule getBase(baseMapIdx(B:Int, _:ValueRef)) => B
@@ -195,5 +221,38 @@ module GOLLVM-MEM
     =>
         allocObjAtBase(getBase(DstAddr), moveToHeap(searchObjAtAddr(SrcAddr)))
         ... </k>
+
+    /*
+        s = sizeof(Addr)
+        if Size > s {   //  large
+            addSize(nextOffset(Addr), Size - s)
+        } else if Size < s {    //  small
+            nextOffset(getSizeMatchOffset(Size, Addr))
+        } else {    //  equal
+            nextOffset(Addr)
+        }
+    */
+    rule [TaddSizeLarge]:
+        addSize(Addr:BaseOffset, Size:Int)
+    =>
+        addSize(
+            nextOffset(Addr),
+            Size -Int getSizeOfTypeOfOffset(Addr)
+        )
+    requires Size >Int getSizeOfTypeOfOffset(Addr)
+    rule [TaddSizeSmall]:
+        addSize (Addr:BaseOffset, Size:Int)
+    =>
+        addSize(appendOffset(Addr, ListItem(0)), Size)
+    requires Size <Int getSizeOfTypeOfOffset(Addr)
+    rule [TaddSizeEqual]:
+        addSize (Addr:BaseOffset, Size:Int)
+    =>
+        nextOffset(Addr)
+    requires Size ==Int getSizeOfTypeOfOffset(Addr)
+
+    rule [TtrimLastIdx]:
+        trimLastIdx(baseOffset(Base, Front:List ListItem(_) .List)) => baseOffset(Base, Front)
+
     
 endmodule

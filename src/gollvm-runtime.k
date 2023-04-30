@@ -22,6 +22,8 @@ module GOLLVM-RUNTIME-SYNTAX
                     |growslice(LocalName, ValueRef, LocalName, ValueRef)
                     //  typedslicecopy(CopyLen, Ty, DstPtr, DstLen, SrcPtr, SrcLen)
                     |typedslicecopy(LocalName, ValueRef, LocalName, ValueRef, LocalName, ValueRef)
+                    //  makeslice(Dst, ElemTD, Len, Cap)
+                    |makeslice(LocalName, ValueRef, ValueRef, ValueRef)
 endmodule
 
 /*
@@ -75,6 +77,17 @@ module RUNTIME-PREPROCESS
     =>
         typedslicecopy(CopyLen, Ty, DstPtr, DstLen, SrcPtr, SrcLen)
     ... </k>
+
+    rule <k>
+        NonVoidGlobalCall (Dst:LocalName, _:Type, @runtime.makeslice,
+                        _:ParamFactor,  //  undef
+                        _:Type _:ParamAttrs ElemTD:ValueRef, // type descriptor
+                        _:Type _:ParamAttrs Len:ValueRef,
+                        _:Type _:ParamAttrs Cap:ValueRef
+                        )
+    =>
+        makeslice(Dst, ElemTD, Len, Cap)
+    ...</k>
 endmodule
 
 /*
@@ -107,6 +120,7 @@ module GOLLVM-RUNTIME
             Local2Base => Local2Base [L <- pureAddr (Addr)]
         </local2Base>
     
+    // TODO 对于其他非mapassign__fast64的mapassign函数，不能直接按照Key的地址值来查找是否在map中，因为map中存储的实际上为Key位置下的值，应该只能判定Key位置的下的空间是会被堆获取的。
     rule [TmapassignExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => addrMapInsert(Dst, readObjMap (baseMapIdx (getBase (deref(Hmap)), Key))) ...</k> requires isValidBaseMapIdxCtor(baseMapIdx (getBase(deref (Hmap)), Key))
 
     rule [TmapassignNotExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => newobject (Dst, unknown) ~> updateRefInMap(baseMapIdx (getBase (deref (Hmap)), Key), Dst) ...</k> 
@@ -118,11 +132,11 @@ module GOLLVM-RUNTIME
         copy({addressValOf(DstPtr)}:>BaseOffset, {addressValOf(SrcPtr)}:>BaseOffset, Size)
     ... </k>
 
-    //  TODO growslice这里的Content没有实际进行增长，但是Type应该进行相应的增长
+    //  TODO growslice这里的Content没有实际进行增长
     rule [Tgrowslice]: <k>
-        growslice(RetPtr:LocalName, ElemType:ValueRef, OldArray:LocalName, Cap:ValueRef)
+        growslice(RetPtr:LocalName, _:ValueRef, OldArray:LocalName, Cap:ValueRef)
     =>
-        updateObjListAtLocalV(RetPtr, 0, allocUnknownObj())
+        updateObjListAtLocalV(RetPtr, 0, useNewAddr())
     ~>  updateObjListAtLocalV(RetPtr, 1, nonAddr(castIntPrim(Cap)))
     ~>  updateObjListAtLocalV(RetPtr, 2, nonAddr(castIntPrim(Cap)))
     ~>  memmoveToHeapAddr(toAddress(readObjAtLocalVWithIdxListWrapper(RetPtr, 0)), addressValOf(OldArray))
@@ -130,12 +144,17 @@ module GOLLVM-RUNTIME
         ... </k>
         requires toIntCastable(Cap)
 
-    //  TODO typedslicecopy
     rule [Ttypedslicecopy]: <k>
         typedslicecopy(CopyLen:LocalName, Ty:ValueRef, DstPtr:LocalName, DstLen:ValueRef, SrcPtr:LocalName, SrcLen:ValueRef)
     =>
         memcpy(DstPtr, SrcPtr, sizeOfTD(Ty) *Int minInt(castIntPrim(DstLen), castIntPrim(SrcLen)))
         ~> updatePrim(CopyLen, minInt(castIntPrim(DstLen), castIntPrim(SrcLen)))
     ... </k> requires toIntCastable(DstLen) andThenBool toIntCastable(SrcLen)
+
+    rule [Tmakeslice]: <k>
+        makeslice(Dst:LocalName, ElemTD:ValueRef, _:ValueRef, Cap:ValueRef)
+    =>
+        addrMapInsert(Dst, allocArray(ElemTD, castIntPrim(Cap), heap))
+    ... </k> requires toIntCastable(Cap)
 
 endmodule

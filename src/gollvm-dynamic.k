@@ -62,6 +62,9 @@ module GOLLVM-DYNAMIC
         <currInst> _ => I </currInst>
     rule <k> evalInsts (.List) => . ...</k>
 
+    rule [[ currBase() => Base ]]
+        <nextId> Base:Int </nextId>
+
     rule [[ getLastBlock() => LastBlock ]]
         <lastBlock> LastBlock:LabelString </lastBlock>
 

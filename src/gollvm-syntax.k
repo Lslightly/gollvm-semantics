@@ -722,12 +722,15 @@ module GOLLVM-SYNTAX
                          | "{" TypeList "}"                   [klabel(#structType), strict]
                          | "<" "{" TypeList "}" ">"           [klabel(#packedStructType), strict]
     syntax ArrayType ::= "[" Int "x" Type "]"
-    syntax Type ::= VoidType | NonVoidType
+    syntax Type ::= VoidType | NonVoidType | ValueRef
     syntax KResult ::= IntTypePre | LocalVar | LocalValID | FPType | LabelType | VoidType | X86Type | "metadata" | ArrayType
     syntax TypeList ::= List{Type,","} [strict]
     syntax Bool ::= isi8(Type) [function]
+                |   isi32(Type) [function]
     rule [Tisi8true]: isi8(Ty:IntTypePre) => (Ty) ==K StringToIntTypePre("i8")
     rule [Tisi8false]: isi8(_) => false [owise]
+    rule [Tisi32true]: isi32(Ty:IntTypePre) => Ty ==K StringToIntTypePre("i32")
+    rule [Tisi32false]: isi32(_) => false [owise]
 
     syntax Select ::= "select"
     /*@

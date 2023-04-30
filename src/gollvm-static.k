@@ -1,5 +1,6 @@
 requires "gollvm-syntax.k"
 requires "gollvm-configuration.k"
+requires "constant.k"
 
 module GOLLVM-STATIC-SYNTAX
     imports GOLLVM-SYNTAX
@@ -17,6 +18,19 @@ module GOLLVM-STATIC
     imports GOLLVM-STATIC-SYNTAX
     imports GOLLVM-SYNTAX
     imports GOLLVM-CONFIGURATION
+    imports CONSTANT
+
+    //  type descriptor definition begin with constant
+    rule <k>
+        GlobalV:GlobalName =
+        _:NonExternalLinkage _:OptVisibilityStyle _:OptDllStorageClass _:OptThreadLocal _:OptAddrSpace _:OptUnnamedAddr _:OptExternallyInitialized
+        constant _:Type C:ConstValueRef
+        _:OptSectionComdatAndAlign
+    =>
+        . ...</k>
+    <globalRegisters>
+        MAP => MAP [ GlobalV <- newConst(C)]
+    </globalRegisters>
 
     //  function definition
     rule <k> define _:FunctionPrefix _:FunctionHeaderPrefix T:Type Name:GlobalName ( Params:ArgList ) _:FunctionHeaderSuffix { StartBlock:BasicBlock Blocks:BasicBlockList }
