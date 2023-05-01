@@ -15,7 +15,8 @@ module GOLLVM-RUNTIME-SYNTAX
     imports OBJECT-SYNTAX
     syntax KItem ::= newobject(LocalName, ObjectType)
                     |makemap(LocalName, MapType)
-                    |mapassign(LocalName, LocalName, ValueRef)
+                    //  mapassign(Dst, MapTypeValueRef, Hmap, Key)
+                    |mapassign(LocalName, ValueRef, LocalName, ValueRef)
                     //  memcpy(DstPtr, SrcPtr, Size)
                     |memcpy(LocalName, LocalName, Int)
                     //  growslice(RetPtr, ElemType, OldArray, Cap)
@@ -40,7 +41,15 @@ module RUNTIME-PREPROCESS
     rule <k> NonVoidGlobalCall (LocalV, _:Type, @runtime.makemap__small, _:ParamList)
     =>
     makemap(LocalV, map[unknown]unknown) ... </k>
-    rule <k> NonVoidGlobalCall (LocalV, _:Type, @runtime.mapassign__fast64, _:ParamFactor, _:ParamFactor, _:Type _:ParamAttrs Hmap:LocalName, _:Type _:ParamAttrs Key:ValueRef) => mapassign(LocalV, Hmap, Key) ...</k>
+    rule <k> NonVoidGlobalCall(
+        LocalV, //  dst = 
+        _:Type, @runtime.mapassign__fast64,
+        _:ParamFactor,  // undef
+        _:Type _:ParamAttrs MapTD:ValueRef,   //  maptype TD
+        _:Type _:ParamAttrs Hmap:LocalName, // hmap
+        _:Type _:ParamAttrs Key:ValueRef    // key
+    )
+    => mapassign(LocalV, MapTD, Hmap, Key) ...</k>
 
     rule <k>
     VoidGlobalCall (@runtime.gcWriteBarrier, _:ParamFactor, _:Type _:ParamAttrs Dst:LocalName, _:Type _:ParamAttrs Src:LocalName)
@@ -121,9 +130,9 @@ module GOLLVM-RUNTIME
         </local2Base>
     
     // TODO 对于其他非mapassign__fast64的mapassign函数，不能直接按照Key的地址值来查找是否在map中，因为map中存储的实际上为Key位置下的值，应该只能判定Key位置的下的空间是会被堆获取的。
-    rule [TmapassignExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => addrMapInsert(Dst, readObjMap (baseMapIdx (getBase (deref(Hmap)), Key))) ...</k> requires isValidBaseMapIdxCtor(baseMapIdx (getBase(deref (Hmap)), Key))
+    rule [TmapassignExist]: <k> mapassign(Dst:LocalName, _:ValueRef, Hmap:LocalName, Key:ValueRef) => addrMapInsert(Dst, readObjMap (baseMapIdx (getBase (deref(Hmap)), Key))) ...</k> requires isValidBaseMapIdxCtor(baseMapIdx (getBase(deref (Hmap)), Key))
 
-    rule [TmapassignNotExist]: <k> mapassign(Dst:LocalName, Hmap:LocalName, Key:ValueRef) => newobject (Dst, unknown) ~> updateRefInMap(baseMapIdx (getBase (deref (Hmap)), Key), Dst) ...</k> 
+    rule [TmapassignNotExist]: <k> mapassign(Dst:LocalName, MapTD:ValueRef, Hmap:LocalName, Key:ValueRef) => newobject (Dst, valueTypeOfMapTypeConstGepExpr(MapTD)) ~> updateRefInMap(baseMapIdx (getBase (deref (Hmap)), Key), Dst) ...</k> 
     [owise]
 
     rule [Tmemcpy]: <k>

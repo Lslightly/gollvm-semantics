@@ -4,6 +4,7 @@ requires "gollvm-mem.k"
 requires "gollvm-object.k"
 requires "constant.k"
 requires "list-helper.k"
+requires "gollvm-syntax-helper.k"
 
 module LLVM-TYPE-DYNAMIC-SYNTAX
     imports GOLLVM-SYNTAX
@@ -30,6 +31,8 @@ module LLVM-TYPE-DYNAMIC-SYNTAX
                 //  matchSubType(ParentType, Size)
                 |   matchSubType(Type, Int) [function]
                 |   newLenOfArrayType(Type, Int) [function]
+                |   valueTypeOfMapType(GlobalName) [function]
+                |   valueTypeOfMapTypeConstGepExpr(ValueRef) [function]
     syntax Bool ::= isValidTypeIdx(Type, List) [function]
                 //  List of Type, Idxs
                 |   isValidTypeListIdx(List, List) [function]
@@ -133,6 +136,16 @@ module LLVM-TYPE-DYNAMIC
 
     rule newLenOfArrayType([_:Int x T:Type], NewLen:Int) => [NewLen x T]
 
+    rule [TvalueTypeOfMapType]:
+        valueTypeOfMapType(MapTD:GlobalName)
+    =>
+        {readConst(MapTD, ListItem(2))}:>ValueRef
+    
+    rule [TvalueTypeOfMapTypeConstGepExpr]:
+        valueTypeOfMapTypeConstGepExpr(V:ValueRef)
+    =>
+        valueTypeOfMapType(extractGlobalName(V))
+
 endmodule
 
 //  for type descriptor in gollvm
@@ -153,6 +166,7 @@ endmodule
 */
 module GOLLVM-DYNAMIC-SYNTAX
     imports GOLLVM-SYNTAX
+    imports GOLLVM-SYNTAX-HELPER-SYNTAX
     imports LIST
     imports INT-SYNTAX
     imports BOOL-SYNTAX

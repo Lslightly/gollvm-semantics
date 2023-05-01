@@ -7,7 +7,7 @@ module OBJECT-SYNTAX
     imports GOLLVM-MEM-INCLUDE
 
     // header(ObjectType) is a List that contains the pointer to the underlying structure
-    syntax ObjectType ::= ValueRef | Type
+    syntax ObjectType ::= Type
                         | "unknown" 
                         | MapType
                         | header(ObjectType) 

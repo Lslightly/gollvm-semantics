@@ -2,6 +2,7 @@ requires "gollvm-syntax.k"
 requires "gollvm-configuration.k"
 requires "gollvm-dynamic-syntax.k"
 requires "gollvm-dyn-insts.k"
+requires "gollvm-syntax-helper.k"
 
 
 /*
@@ -12,6 +13,7 @@ module GOLLVM-DYNAMIC
     imports GOLLVM-CONFIGURATION
     imports GOLLVM-DYNAMIC-SYNTAX
     imports GOLLVM-DYN-INSTS
+    imports GOLLVM-SYNTAX-HELPER
     imports K-EQUAL
 
     //  start executing @main.main
