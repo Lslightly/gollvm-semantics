@@ -718,10 +718,15 @@ module GOLLVM-SYNTAX
                          | Type OptAddrSpace "*"              [klabel(#pointerType), strict(1)]
                          | Type "(" ArgList ")"               [klabel(#functionType)]
                          | ArrayType
+                         | StructType
                          | "<" Int "x" Type ">"
-                         | "{" TypeList "}"                   [klabel(#structType), strict]
                          | "<" "{" TypeList "}" ">"           [klabel(#packedStructType), strict]
     syntax ArrayType ::= "[" Int "x" Type "]"
+    syntax StructType ::= "{" TypeList "}" [klabel(#structType), strict]
+    syntax Bool ::= isStructTypeSort(KItem) [function]
+    rule isStructTypeSort(_:StructType) => true
+    rule isStructTypeSort(_) => false [owise]
+
     syntax Type ::= VoidType | NonVoidType | ValueRef
     syntax KResult ::= IntTypePre | LocalVar | LocalValID | FPType | LabelType | VoidType | X86Type | "metadata" | ArrayType
     syntax TypeList ::= List{Type,","} [strict]

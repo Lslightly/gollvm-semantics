@@ -21,6 +21,9 @@ module LLVM-TYPE-DYNAMIC-SYNTAX
                 |   cntDepthOf1stUnderlyingTypeOfList(TypeList) [function]
                 |   SizeOfType(Type) [function]
                 |   SizeOfTypeList(TypeList) [function]
+                //  offsetOfField(StructType, FieldNumber)
+                //  offset size from the beginning of the struct to the field number of struct
+                |   offsetOfField(StructType, Int) [function]
     syntax Type ::= trimPtrType(Type) [function]
                 |   subType(Type, List) [function]
                 |   subTypeList(TypeList, List) [function]
@@ -83,6 +86,14 @@ module LLVM-TYPE-DYNAMIC
 
     rule SizeOfTypeList (T:Type, Ts:TypeList) => SizeOfType(T) +Int SizeOfTypeList (Ts)
     rule SizeOfTypeList(.TypeList) => 0
+
+    rule [ToffsetOfFieldOwise]:
+        offsetOfField({ T:Type, TL:TypeList }, I:Int)
+    =>
+        SizeOfType(T) +Int offsetOfField({TL}, I -Int 1) [owise]
+    
+    rule [ToffsetOfFieldZero]:
+        offsetOfField (_, 0) => 0
 
     rule subType(T:Type, .List) => T [priority(49)]
     rule subType([_ x T], ListItem(_) L:List) => subType(T, L)

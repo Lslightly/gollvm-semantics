@@ -82,15 +82,34 @@ module GOLLVM-DYN-INSTS
     rule getGepIdxList(_:OptInRange _:Type V:ValueRef , Remains:ReturnedValGep) => ListItem(castIntPrim(V)) getGepIdxList(Remains) requires toIntCastable(V)
     rule getGepIdxList(.ReturnedValGep) => .List
 
-    rule sizeOfGepIdxList(T:Type, _:OptInRange _:Type V:ValueRef , Remains:ReturnedValGep)
+    rule [TsizeOfGepIdxListRecur]: sizeOfGepIdxList(T:Type, _:OptInRange _:Type V:ValueRef , Remains:ReturnedValGep)
     =>
         castIntPrim(V) *Int SizeOfType(T) +Int sizeOfGepIdxList(subType(T, ListItem(0)), Remains) requires toIntCastable(V)
     [priority(51)]
 
-    rule sizeOfGepIdxList(T:Type, _:OptInRange _:Type V:ValueRef , .ReturnedValGep)
+    rule [TsizeOfGepIdxListStruct]:
+        sizeOfGepIdxList(
+            StructT:Type,
+            _:OptInRange _:Type StructOffset:ValueRef,
+            _:OptInRange _:Type FieldOffset:ValueRef,
+            Remains:ReturnedValGep
+        )
+    =>
+        castIntPrim(StructOffset) *Int SizeOfType(StructT)
+            +Int offsetOfField({StructT}:>StructType, castIntPrim (FieldOffset))
+            +Int sizeOfGepIdxList(subType(StructT, ListItem(castIntPrim(FieldOffset))), Remains)
+    requires toIntCastable(StructOffset) andThenBool toIntCastable(FieldOffset) andThenBool isStructTypeSort(StructT)
+    [priority(50)]
+
+    rule [TsizeOfGepIdxList]: sizeOfGepIdxList(T:Type, _:OptInRange _:Type V:ValueRef , .ReturnedValGep)
     =>
         castIntPrim(V) *Int SizeOfType(T) requires toIntCastable(V)
     [priority(50)]
+
+    rule [TsizeOfGepIdxListNoIdx]:
+        sizeOfGepIdxList(_:Type, .ReturnedValGep)
+    =>
+        0
     
 endmodule
 
@@ -155,19 +174,42 @@ module GOLLVM-NORMAL-INSTS
     rule [TloadWriteBarrier]: <k> execInst(Dst:LocalName = load _:OptVolatile _:Type , _:Type bitcast ( _:Type @runtime.writeBarrier to _:Type), _:Align _:InstructionMetadatas) => updatePrim (Dst, 1) ...</k> [priority(49)]
 
     rule [Tload]: <k>
-        execInst (Dst:LocalName = load _:OptVolatile _:Type , _:Type Src:LocalName, _:Align _:InstructionMetadatas)
-        => addrMapInsert(Dst, {readObjAtLocalV(Src)}:>Address) ...  </k>
-        requires isAddr(Src) andBool (readObjAtLocalV (Src) =/=K uninit andBool (notBool isNonAddrSort(readObjAtLocalV(Src))))
+        execInst (Dst:LocalName = load _:OptVolatile DstType:Type , _:Type Src:LocalName, _:Align _:InstructionMetadatas)
+        =>  addrMapInsert(
+                Dst,
+                {readContentAtAddr(
+                    getTypeMatchedBaseOffset(
+                        DstType,
+                        baseOffsetOf(Src)
+                    )
+                )}:>BaseOffset
+            )
+    ... </k>
+        requires
+            isAddr(Src)
+        andBool
+            (readContentAtAddr(getTypeMatchedBaseOffset(DstType, baseOffsetOf(Src))) =/=K uninit
+            andBool (notBool isNonAddrSort(readContentAtAddr(getTypeMatchedBaseOffset(DstType, baseOffsetOf(Src))))))
 
     rule [Tloadprim]:
         <k>
-            execInst (Dst:LocalName = load _:OptVolatile _:Type , _:Type Src:LocalName, _:Align _:InstructionMetadatas)
+            execInst (Dst:LocalName = load _:OptVolatile DstType:Type , _:Type Src:LocalName, _:Align _:InstructionMetadatas)
         => 
-            . ... </k>
-        <local2prim>
-            PRIM => PRIM [ Dst <- trimWrapperNonAddr(readObjAtLocalV(Src)) ]
-        </local2prim>
-    requires isAddr(Src) andBool isNonAddrSort(readObjAtLocalV(Src))    
+            updatePrim(
+                Dst,
+                trimWrapperNonAddr(
+                    readContentAtAddr(
+                        getTypeMatchedBaseOffset(
+                            DstType,
+                            baseOffsetOf(Src)
+                        )
+                    )
+                )
+            )
+        ... </k>
+    requires isAddr(Src)
+    andBool
+        isNonAddrSort(readContentAtAddr(getTypeMatchedBaseOffset(DstType, baseOffsetOf(Src))))    
     
     rule [TphiAddr]: <k>
         execInst(Dst:LocalName = phi _:Type _:PHIList _:InstructionMetadatas)
@@ -184,17 +226,17 @@ module GOLLVM-NORMAL-INSTS
     requires toPrimCastable(getPhiValueFromBlock(extractPhiMap(getPhiMap(), Dst), getLastBlock()))
     
     rule [TstoreLocalNameAddr]: <k>
-        execInst(store _:OptVolatile _:Type V:LocalName , _:Type Loc:LocalName , _:Align _:InstructionMetadatas) => storeAddress (Loc, V) ... </k>
+        execInst(store _:OptVolatile VType:Type V:LocalName , _:Type Loc:LocalName , _:Align _:InstructionMetadatas) => storeAddress (Loc, VType, V) ... </k>
         requires isAddr(V)
 
     rule [TstoreLocalNameNonAddr]:
         <k>
-        execInst(store _:OptVolatile _:Type V:LocalName , _:Type Dst:LocalName , _:Align _:InstructionMetadatas) => storeNonAddr(Dst, nonAddr(lookUpPrim(V))) ... </k>
+        execInst(store _:OptVolatile VType:Type V:LocalName , _:Type Dst:LocalName , _:Align _:InstructionMetadatas) => storeNonAddr(Dst, VType, nonAddr(lookUpPrim(V))) ... </k>
         requires isPrim(V)
 
     rule [TstoreConst]:
         <k>
-            execInst(store _:OptVolatile _:Type V:ConstValueRef , _:Type Dst:LocalName , _:Align _:InstructionMetadatas) => storeNonAddr (Dst, nonAddr(V):NonAddr) ...
+            execInst(store _:OptVolatile VType:Type V:ConstValueRef , _:Type Dst:LocalName , _:Align _:InstructionMetadatas) => storeNonAddr(Dst, VType, nonAddr(V):NonAddr) ...
         </k>
 
     rule [Talloc]:

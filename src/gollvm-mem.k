@@ -98,12 +98,12 @@ module GOLLVM-MEM-SYNTAX
     //  addrAlias(dst, src) used to addrAlias dst with src
     syntax KItem ::= addrAlias(LocalName, LocalName)
                 |   addrMapInsert(LocalName, Address) [seqstrict]
-    //  store(dst, srcv)
-    //  store the address of srcv to dst's object
-    syntax KItem ::= storeAddress(LocalName, LocalName)
-    //  store(dst, nonAddr(Value))
-    //  store nonAddr to dst's object
-    syntax KItem ::= storeNonAddr(LocalName, NonAddr)
+    //  store(dst, dstType, srcv)
+    //  store the address of srcv to dst's address according to dstType
+    syntax KItem ::= storeAddress(LocalName, Type, LocalName)
+    //  store(dst, dstType, nonAddr(Value))
+    //  store nonAddr to dst's address according to dstType
+    syntax KItem ::= storeNonAddr(LocalName, Type, NonAddr)
     syntax Bool ::= isAddr(LocalName) [function]
                 |   isBaseOffsetSort(Address) [function]
                 |   isPrim(LocalName) [function]
@@ -180,14 +180,30 @@ module GOLLVM-MEM
         </local2Base>
     
 
-    rule [TvalidStoreAddress]:<k> storeAddress (Dst:LocalName, Src:LocalName) => updateObjAtAddr (addressValOf(Dst), addressValOf(Src)) ...</k>
+    rule [TvalidStoreAddress]:<k>
+        storeAddress (Dst:LocalName, DstType:Type, Src:LocalName)
+    =>
+        updateObjAtAddr(getTypeMatchedBaseOffset(DstType, baseOffsetOf(Dst)), addressValOf(Src))
+    ...</k>
         requires notBool (inHeap(searchObjAtLocalV(Dst)) andBool notBool inHeap(searchObjAtLocalV (Src)))
-    rule <k> storeAddress (Dst:LocalName, Src:LocalName) => updateObjAtAddr(addressValOf(Dst), addressValOf(Src)) ...</k>
+    rule <k>
+        storeAddress(Dst:LocalName, DstType:Type, Src:LocalName)
+    =>
+        updateObjAtAddr(getTypeMatchedBaseOffset(DstType, baseOffsetOf(Dst)), addressValOf(Src)) ...</k>
         <currInst> CurrInst </currInst>
         <errors>... .List => ListItem(heap2stack(Dst, Src, CurrInst))</errors>
         [owise]
     
-    rule <k> storeNonAddr (L:LocalName, Non:NonAddr) => updateObjAtAddr(addressValOf (L), Non) ...</k>
+    rule <k>
+        storeNonAddr (L:LocalName, VType:Type, Non:NonAddr)
+    =>
+        updateObjAtAddr(
+            getTypeMatchedBaseOffset(
+                VType, baseOffsetOf(L)
+            ),
+            Non
+        )
+        ...</k>
     
 
     rule [[ isAddr(L:LocalName) => L in_keys(Local2Base) ]]
@@ -227,7 +243,11 @@ module GOLLVM-MEM
         if Size > s {   //  large
             addSize(nextOffset(Addr), Size - s)
         } else if Size < s {    //  small
-            nextOffset(getSizeMatchOffset(Size, Addr))
+            if Size == 0 {
+                Addr
+            } else {
+                nextOffset(getSizeMatchOffset(Size, Addr))
+            }
         } else {    //  equal
             nextOffset(Addr)
         }
@@ -245,6 +265,9 @@ module GOLLVM-MEM
     =>
         addSize(appendOffset(Addr, ListItem(0)), Size)
     requires Size <Int getSizeOfTypeOfOffset(Addr)
+    rule [TaddSizeZero]:
+        addSize (Addr:BaseOffset, 0) => Addr
+        [priority(49)]
     rule [TaddSizeEqual]:
         addSize (Addr:BaseOffset, Size:Int)
     =>
