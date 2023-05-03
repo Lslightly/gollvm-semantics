@@ -168,6 +168,21 @@ module GOLLVM-NORMAL-INSTS
     rule [Ticmpuge]: <k> execInst(Dst:LocalName = icmp uge _:Type L1:ValueRef , L2:ValueRef _:InstructionMetadatas)
     =>
         updatePrim (Dst, castIntPrim(L1) >=Int castIntPrim(L2)) ... </k>
+
+    rule [TicmpunknownTrue]:
+    <k>
+        execInst(Dst:LocalName = icmp _:IPredicate _:Type _:ValueRef , _:ValueRef _:InstructionMetadatas)
+    =>
+        updatePrim (Dst, true)
+    ... </k>
+    [priority(100)]
+    rule [TicmpunknownFalse]:
+    <k>
+        execInst(Dst:LocalName = icmp _:IPredicate _:Type _:ValueRef , _:ValueRef _:InstructionMetadatas)
+    =>
+        updatePrim (Dst, false)
+    ... </k>
+    [priority(100)]
     
     rule [Tptrtoint]: <k> execInst (Dst:LocalName = ptrtoint _:Type Src:LocalName to _:Type _:InstructionMetadatas) => addrAlias(Dst, Src) ...</k>
 
@@ -279,6 +294,21 @@ module GOLLVM-NORMAL-INSTS
         => 
             updatePrim(Dst, castIntPrim(LHS) &Int castIntPrim(RHS)) ...
         </k> requires toIntCastable(LHS) andThenBool toIntCastable(RHS)
+    
+    rule [TandUnknownTrue]:
+        <k>
+            execInst(Dst:LocalName = and _:Type _:ValueRef, _:ValueRef _:InstructionMetadatas)
+        => 
+            updatePrim(Dst, true)
+        ... </k>
+        [priority(100)]
+    rule [TandUnknownFalse]:
+        <k>
+            execInst(Dst:LocalName = and _:Type _:ValueRef, _:ValueRef _:InstructionMetadatas)
+        => 
+            updatePrim(Dst, false)
+        ... </k>
+        [priority(100)]
     
     rule [Tadd]:
         <k>
