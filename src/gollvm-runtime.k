@@ -29,6 +29,18 @@ module GOLLVM-RUNTIME-SYNTAX
                     |ifaceE2T2(LocalName, ValueRef, ValueRef, LocalName, LocalName)
                     //  ifaceI2T2(Convertable, ToTD, FromInterType, FromData, ToData)
                     |ifaceI2T2(LocalName, ValueRef, ValueRef, LocalName, LocalName)
+                    //  ifaceE2E2(RetPtr, FromTD, FromData)
+                    |ifaceE2E2(LocalName, ValueRef, LocalName)
+                    //  ifaceE2I2(RetPtr, ToInterType, FromTD, FromData)
+                    |ifaceE2I2(LocalName, ValueRef, ValueRef, LocalName)
+                    //  ifaceI2E2(RetPtr, FromInterType, FromData)
+                    |ifaceI2E2(LocalName, ValueRef, LocalName)
+                    //  ifaceI2I2(RetPtr, ToInterType, FromInterType, FromData)
+                    |ifaceI2I2(LocalName, ValueRef, ValueRef, LocalName)
+                    //  ifaceE2T2p(RetStruct, ToTD, FromTD, FromData)
+                    |ifaceE2T2p(LocalName, ValueRef, ValueRef, LocalName)
+                    //  ifaceI2T2p(RetStruct, ToTD, FromInterType, FromData)
+                    |ifaceI2T2p(LocalName, ValueRef, ValueRef, LocalName)
 endmodule
 
 /*
@@ -125,6 +137,66 @@ module RUNTIME-PREPROCESS
     =>
         ifaceI2T2(Convertable, ToTD, FromInterType, FromData, ToData)
     ... </k>
+
+    rule <k>
+        VoidGlobalCall (@runtime.ifaceE2E2,
+                        _:Type _:ParamAttrs RetPtr:ValueRef, // retptr
+                        _:Type _:ParamAttrs FromTD:ValueRef, // "from" type descriptor
+                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+        )
+    =>
+        ifaceE2E2(RetPtr, FromTD, FromData)
+    ... </k>
+    rule <k>
+        VoidGlobalCall (@runtime.ifaceE2I2,
+                        _:Type _:ParamAttrs RetPtr:ValueRef, // retptr
+                        _:Type _:ParamAttrs ToInterType:ValueRef, // "to" interfacetype
+                        _:Type _:ParamAttrs FromTD:ValueRef, // "from" type descriptor
+                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+        )
+    =>
+        ifaceE2I2(RetPtr, ToInterType, FromTD, FromData)
+    ... </k>
+    rule <k>
+        VoidGlobalCall (@runtime.ifaceI2E2,
+                        _:Type _:ParamAttrs RetPtr:ValueRef, // retptr
+                        _:Type _:ParamAttrs FromInterType:ValueRef, // "from" interfacetype
+                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+        )
+    =>
+        ifaceI2E2(RetPtr, FromInterType, FromData)
+    ... </k>
+    rule <k>
+        VoidGlobalCall (@runtime.ifaceI2I2,
+                        _:Type _:ParamAttrs RetPtr:ValueRef, // retptr
+                        _:Type _:ParamAttrs ToInterType:ValueRef, // "to" interfacetype
+                        _:Type _:ParamAttrs FromInterType:ValueRef, // "from" interfacetype
+                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+        )
+    =>
+        ifaceI2I2(RetPtr, ToInterType, FromInterType, FromData)
+    ... </k>
+    rule <k>
+        NonVoidGlobalCall (RetStruct:LocalName, RetType:Type, @runtime.ifaceE2T2p,
+                        _:ParamFactor,  //  undef
+                        _:Type _:ParamAttrs ToTD:ValueRef, // "to" type descriptor
+                        _:Type _:ParamAttrs FromTD:ValueRef, // "from" type descriptor
+                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+        )
+    =>
+        ifaceE2T2p (RetStruct, ToTD, FromTD, FromData)
+    ... </k>
+    rule <k>
+        NonVoidGlobalCall (RetStruct:LocalName, RetType:Type, @runtime.ifaceI2T2p,
+                        _:ParamFactor,  //  undef
+                        _:Type _:ParamAttrs ToTD:ValueRef, // "to" type descriptor
+                        _:Type _:ParamAttrs FromInterType:ValueRef, // "from" interfacetype
+                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+        )
+    =>
+        ifaceI2T2p (RetStruct, ToTD, FromInterType, FromData)
+    ... </k>
+
 endmodule
 
 /*
@@ -225,5 +297,7 @@ module GOLLVM-RUNTIME
     ~> updatePrim (Convertable, false)
     ... </k>
     requires notBool eqtype(ToTD, getTypeOfInterfaceType(extractGlobalName(FromInterType)))
+
+    // TODO EITp
 
 endmodule
