@@ -4,8 +4,12 @@ requires "list-helper.k"
 requires "list2list.k"
 module CONSTANT-SYNTAX
     imports GOLLVM-SYNTAX
+    imports GOLLVM-CONFIGURATION
     imports LIST2LIST-SYNTAX
     imports LIST
+    syntax GlobalReg ::= globalReg(Type, KItem)
+// read
+                        |getGlobalReg(GlobalName) [function]
 // create
     //  construct nesting Structure, if ConstValueRef is nesting.
     syntax KItem ::= newConst(ConstValueRef) [function]
@@ -15,6 +19,17 @@ endmodule
 
 module CONSTANT
     imports CONSTANT-SYNTAX
+
+// ------GlobalReg
+// read
+    rule [TgetGlobalReg]:
+    [[
+        getGlobalReg(GV:GlobalName)
+    =>
+        {MAP[GV]}:>GlobalReg
+    ]]
+    <globalRegisters> MAP </globalRegisters>
+    requires GV in_keys(MAP)
 
 //  create
 
@@ -36,6 +51,10 @@ module CONSTANT-DYNAMIC-SYNTAX
     imports LIST2LIST-SYNTAX
     imports LIST
 //  read
+    syntax Type ::= getTypeOfGlobalReg(GlobalReg) [function]
+                |   getTypeOfGlobalV(GlobalName) [function]
+    syntax KItem ::= getValOfGlobalReg(GlobalReg) [function]
+                |   getValOfGlobalV(GlobalName) [function]
     //  read Constant with index list
     syntax KItem ::= readConst(GlobalName, List) [function]
 // evaluate
@@ -46,16 +65,19 @@ module CONSTANT-DYNAMIC
     imports CONSTANT-DYNAMIC-SYNTAX
     imports LIST2LIST
 //  read
+    rule [TgetTypeOfGlobalReg]:
+        getTypeOfGlobalReg(globalReg(T:Type, _:KItem)) => T
+    rule [TgetTypeOfGlobalV]:
+        getTypeOfGlobalV(GV:GlobalName) => getTypeOfGlobalReg(getGlobalReg(GV))
+    rule [TgetValOfGlobalReg]:
+        getValOfGlobalReg(globalReg(_:Type, Val:KItem)) => Val
+    rule [TgetValOfGlobalV]:
+        getValOfGlobalV(GV:GlobalName) => getValOfGlobalReg(getGlobalReg(GV))
+
     rule [TreadConst]:
-        [[
-            readConst (V:GlobalName, IdxList:List)
-        =>
-            getElemMultiDim(MAP[V], IdxList)
-        ]]
-        <globalRegisters>
-            MAP
-        </globalRegisters>
-    requires V in_keys(MAP)
+        readConst (V:GlobalName, IdxList:List)
+    =>
+        getElemMultiDim(getValOfGlobalV(V), IdxList)
 //  evaluate
     rule evalConst(getelementptr _:OptInBounds(_:Type, _Type GlobalC:GlobalName, Idxs:ReturnedVal)) => readConst(GlobalC, getValsOfReturnedVal(Idxs))
 endmodule

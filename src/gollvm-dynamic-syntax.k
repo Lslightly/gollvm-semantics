@@ -36,6 +36,7 @@ module LLVM-TYPE-DYNAMIC-SYNTAX
     syntax Bool ::= isValidTypeIdx(Type, List) [function]
                 //  List of Type, Idxs
                 |   isValidTypeListIdx(List, List) [function]
+    syntax Bool ::= isBasicTypeSort(Type) [function]
 
 endmodule
 
@@ -50,6 +51,7 @@ module LLVM-TYPE-DYNAMIC
     imports LLVM-TYPE-DYNAMIC-SYNTAX
     imports OBJECT-SYNTAX
     imports LIST
+    imports TYPE-DEFINES
     imports CONSTANT-DYNAMIC
 
     // rule initOfType (metadata) => uninit
@@ -61,6 +63,8 @@ module LLVM-TYPE-DYNAMIC
     rule initOfType (_:Type _:OptAddrSpace *) => uninit
     rule initOfType ([ I:Int x T:Type ]) => makeList(I, initOfType (T))
     rule initOfType ({ TyList:TypeList }) => initOfTypeList(TyList)
+    rule [TinitOfTypeV]:
+        initOfType(TV:LocalName) => initOfType(realType(TV))
 
     rule initOfTypeList (T:Type, Ts:TypeList) => ListItem(initOfType(T)) initOfTypeList (Ts)
     rule initOfTypeList(.TypeList) => .List
@@ -86,6 +90,8 @@ module LLVM-TYPE-DYNAMIC
         SizeOfType(TD:GlobalName)
     =>
         {readConst(TD, ListItem(0))}:>Int
+    rule [TSizeOfTypeV]:
+        SizeOfType(TypeV:LocalName) => SizeOfType(realType (TypeV))
 
     rule SizeOfTypeList (T:Type, Ts:TypeList) => SizeOfType(T) +Int SizeOfTypeList (Ts)
     rule SizeOfTypeList(.TypeList) => 0
@@ -103,6 +109,7 @@ module LLVM-TYPE-DYNAMIC
     rule subType(<_ x T>, ListItem(_) L:List) => subType(T, L)
     rule subType({ TyList }, L:List) => subTypeList(TyList, L)
     rule subType(<{ TyList }>, L:List) => subTypeList(TyList, L)
+    rule subType(TypeV:LocalName, L:List) => subType(realType(TypeV), L)
 
     rule subTypeList(TyList:TypeList, ListItem(I:Int) L:List) => subType({convTypeList2List(TyList)[I]}:>Type, L)
 
@@ -114,6 +121,7 @@ module LLVM-TYPE-DYNAMIC
 
     rule isValidTypeListIdx (TyList:List, ListItem(Idx:Int) L:List) => Idx <Int size (TyList) andBool isValidTypeIdx({TyList[Idx]}:>Type, L)
     rule isValidTypeIdx (_:Type, _:List) => false [owise]
+    rule isValidTypeIdx (TypeV:LocalName, L:List) => isValidTypeIdx(realType(TypeV), L)
 
     rule cntDepthOf1stUnderlyingType (metadata) => 0
     rule cntDepthOf1stUnderlyingType (_:X86Type) => 0
@@ -128,6 +136,10 @@ module LLVM-TYPE-DYNAMIC
         cntDepthOf1stUnderlyingType(_:ConstExpr) => 0
     rule [TcntDepthOf1stUnderlyingTypeTD]:
         cntDepthOf1stUnderlyingType(_:GlobalName) => 0
+    rule
+        cntDepthOf1stUnderlyingType(TypeV:LocalName)
+    =>
+        cntDepthOf1stUnderlyingType(realType(TypeV))
 
     rule cntDepthOf1stUnderlyingTypeOfList(.TypeList) => 0
     rule cntDepthOf1stUnderlyingTypeOfList (T:Type, _:TypeList) => cntDepthOf1stUnderlyingType (T)
@@ -146,19 +158,36 @@ module LLVM-TYPE-DYNAMIC
     =>
         valueTypeOfMapType(extractGlobalName(V))
 
+    //  TODO not complete
+    rule isBasicTypeSort (_:Type) => false [owise]
+    rule isBasicTypeSort (_:IntTypePre) => true
+    rule isBasicTypeSort (_:FPType) => true
+    rule isBasicTypeSort (_:LabelType) => true
+    rule isBasicTypeSort (_:VoidType) => true
+    rule isBasicTypeSort (_:X86Type) => true
+    rule isBasicTypeSort (metadata) => true
+    rule isBasicTypeSort (_:Type _:OptAddrSpace *) => true
+    rule isBasicTypeSort (_:Type (_:ArgList)) => true
+    rule isBasicTypeSort (TD:GlobalName) => getTypeOfGlobalV (TD) ==K %_type.0
+    rule
+        isBasicTypeSort(GepTD:ValueRef)
+    =>
+        getTypeOfGlobalV(extractGlobalName(GepTD)) ==K %PtrType.0
+    requires isGepTD(GepTD)
+
 endmodule
 
-//  for type descriptor in gollvm
-module GOLLVM-TYPEDESCRIPTOR-SYNTAX
+module TYPE-DEFINES
     imports GOLLVM-SYNTAX
-    imports INT
-    syntax Int ::= sizeOfTD(ValueRef) [function]
-endmodule
-
-module GOLLVM-TYPEDESCRIPTOR
-    imports GOLLVM-TYPEDESCRIPTOR-SYNTAX
-    //TODO complete size of type descriptor
-    rule sizeOfTD(_:ValueRef) => 8
+    imports GOLLVM-CONFIGURATION
+    syntax Type ::= realType(LocalName) [function]
+    rule [TrealType]:
+    [[
+        realType(TypeV:LocalName)
+    =>
+        {MAP[TypeV]}:>Type
+    ]]
+    <typedefs> MAP </typedefs>
 endmodule
 
 /*

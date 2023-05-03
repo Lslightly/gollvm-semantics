@@ -20,16 +20,25 @@ module GOLLVM-STATIC
     imports GOLLVM-CONFIGURATION
     imports CONSTANT
 
+    //  type defines
+    rule <k>
+        TypeV:LocalName = type T:Type
+    =>
+        . ... </k>
+    <typedefs>
+        MAP => MAP [ TypeV <- T ]
+    </typedefs>
+
     //  type descriptor definition begin with constant
     rule <k>
         GlobalV:GlobalName =
         _:NonExternalLinkage _:OptVisibilityStyle _:OptDllStorageClass _:OptThreadLocal _:OptAddrSpace _:OptUnnamedAddr _:OptExternallyInitialized
-        constant _:Type C:ConstValueRef
+        constant T:Type C:ConstValueRef
         _:OptSectionComdatAndAlign
     =>
         . ...</k>
     <globalRegisters>
-        MAP => MAP [ GlobalV <- newConst(C)]
+        MAP => MAP [ GlobalV <- globalReg(T, newConst(C)) ]
     </globalRegisters>
 
     //  function definition

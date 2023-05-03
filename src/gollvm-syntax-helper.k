@@ -8,6 +8,9 @@ module GOLLVM-SYNTAX-HELPER-SYNTAX
 
 // extract GlobalName from ValueRef
     syntax GlobalName ::= extractGlobalName(ValueRef) [function]
+
+// judge whether is the specified format of code
+    syntax Bool ::= isGepTD(ValueRef) [function]
 endmodule
 
 module GOLLVM-SYNTAX-HELPER
@@ -17,4 +20,7 @@ module GOLLVM-SYNTAX-HELPER
         extractGlobalName(getelementptr _:OptInBounds(_:Type, _:Type GV:GlobalName, _:ReturnedVal))
     =>
         GV
+    
+    rule isGepTD (_:ValueRef) => false [owise]
+    rule isGepTD (getelementptr _:OptInBounds(_:Type, _:ReturnedVal)) => true
 endmodule

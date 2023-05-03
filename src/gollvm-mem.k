@@ -43,7 +43,6 @@ endmodule
 module GOLLVM-MEM-SYNTAX
     imports GOLLVM-MEM-INCLUDE
     imports LLVM-TYPE-DYNAMIC-SYNTAX
-    imports GOLLVM-TYPEDESCRIPTOR-SYNTAX
     imports NON-ADDR-SYNTAX
     imports LIST
 
@@ -75,7 +74,6 @@ module GOLLVM-MEM-SYNTAX
                             increase BaseOffset with Size
                             Size can be larger than sizeof(typeof(BaseOffset))
                         */
-                        //  TODO check addOffset size
                         |   addSize(BaseOffset, Int) [function]
                         /*
                             input:
@@ -127,7 +125,6 @@ endmodule
 module GOLLVM-MEM
     imports GOLLVM-MEM-SYNTAX
     imports LLVM-TYPE-DYNAMIC
-    imports GOLLVM-TYPEDESCRIPTOR
     imports NON-ADDR
     imports OBJECT
     imports K-EQUAL

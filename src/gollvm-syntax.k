@@ -715,13 +715,14 @@ module GOLLVM-SYNTAX
     syntax NonVoidType ::= "metadata"
                          | X86Type
                          | PrimType
-                         | Type OptAddrSpace "*"              [klabel(#pointerType), strict(1)]
+                         | PointerType
                          | Type "(" ArgList ")"               [klabel(#functionType)]
                          | ArrayType
                          | StructType
                          | "<" Int "x" Type ">"
                          | "<" "{" TypeList "}" ">"           [klabel(#packedStructType), strict]
     syntax ArrayType ::= "[" Int "x" Type "]"
+    syntax PointerType ::= Type OptAddrSpace "*"              [strict(1)]
     syntax StructType ::= "{" TypeList "}" [klabel(#structType), strict]
     syntax Bool ::= isStructTypeSort(KItem) [function]
     rule isStructTypeSort(_:StructType) => true

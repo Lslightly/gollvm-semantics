@@ -156,7 +156,7 @@ module GOLLVM-RUNTIME
     rule [Ttypedslicecopy]: <k>
         typedslicecopy(CopyLen:LocalName, Ty:ValueRef, DstPtr:LocalName, DstLen:ValueRef, SrcPtr:LocalName, SrcLen:ValueRef)
     =>
-        memcpy(DstPtr, SrcPtr, sizeOfTD(Ty) *Int minInt(castIntPrim(DstLen), castIntPrim(SrcLen)))
+        memcpy(DstPtr, SrcPtr, SizeOfType(Ty) *Int minInt(castIntPrim(DstLen), castIntPrim(SrcLen)))
         ~> updatePrim(CopyLen, minInt(castIntPrim(DstLen), castIntPrim(SrcLen)))
     ... </k> requires toIntCastable(DstLen) andThenBool toIntCastable(SrcLen)
 

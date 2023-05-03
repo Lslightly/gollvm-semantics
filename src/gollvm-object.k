@@ -350,11 +350,37 @@ module OBJECT
 
 */
 
-    rule [TgetSizeMatchedOffset]:
+    rule [TgetSizeMatchedOffsetBasic]:
         getSizeMatchedOffset(Size:Int, Addr:BaseOffset)
     =>
         Addr
-    requires SizeOfType(getTypeOfOffset(Addr)) ==Int Size
+    requires SizeOfType(getTypeOfOffset(Addr)) ==Int Size andThenBool(isBasicTypeSort(getTypeOfOffset(Addr)))
+
+    //  subtype is equal to size, append zeros to the end of baseoffset
+    rule [TgetSizeMatchedOffsetSubTypeLarge]:
+        getSizeMatchedOffset(Size:Int, baseOffset(Base:Int, IdxList:List) #as Addr)
+    =>
+        appendOffsetToMatchSize(Size, baseOffset(Base, IdxList ListItem(0)))
+    requires
+        SizeOfType(getTypeOfOffset(Addr)) ==Int Size
+    andThenBool(
+            (notBool isBasicTypeSort(getTypeOfOffset(Addr)))
+        andThenBool
+            (SizeOfType(subType(getTypeOfOffset(Addr), ListItem(0))) ==Int SizeOfType(getTypeOfOffset(Addr)))
+        )
+    
+    rule [TgetSizeMatchedOffsetNotBasic]:
+        getSizeMatchedOffset(Size:Int, baseOffset(_:Int, _:List) #as Addr)
+    =>
+        Addr
+    requires
+        SizeOfType(getTypeOfOffset(Addr)) ==Int Size
+    andThenBool(
+            (notBool isBasicTypeSort(getTypeOfOffset(Addr)))
+        andThenBool
+            (SizeOfType(subType(getTypeOfOffset(Addr), ListItem(0))) <Int SizeOfType(getTypeOfOffset(Addr)))
+        )
+
     rule [TgetSizeMatchedOffsetAppend]:
         getSizeMatchedOffset(Size:Int, Addr:BaseOffset)
     =>
@@ -371,7 +397,12 @@ module OBJECT
         appendOffsetToMatchSize(Size:Int, Addr:BaseOffset)
     =>
         Addr
-    requires SizeOfType(getTypeOfOffset(Addr)) ==Int Size
+    requires SizeOfType(getTypeOfOffset(Addr)) ==Int Size andThenBool isBasicTypeSort(getTypeOfOffset(Addr))
+    rule [TappendOffsetToMatchSizeNotBasic]:
+        appendOffsetToMatchSize(Size:Int, baseOffset(Base:Int, IdxList:List) #as Addr)
+    =>
+        appendOffsetToMatchSize (Size, baseOffset (Base, IdxList ListItem(0)))
+    requires SizeOfType(getTypeOfOffset(Addr)) ==Int Size andThenBool notBool isBasicTypeSort(getTypeOfOffset(Addr))
 
     rule [TappendOffsetToMatchSizeRecur]:
         appendOffsetToMatchSize(Size:Int, baseOffset(Base:Int, IdxList:List) #as Addr)
