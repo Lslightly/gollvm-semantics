@@ -16,8 +16,12 @@ endmodule
 module GOLLVM-SYNTAX-HELPER
     imports GOLLVM-SYNTAX-HELPER-SYNTAX
 
-    rule [TextractGlobalName]:
+    rule [TextractGlobalNameGep]:
         extractGlobalName(getelementptr _:OptInBounds(_:Type, _:Type GV:GlobalName, _:ReturnedVal))
+    =>
+        GV
+    rule [TextractGlobalNameBitcast]:
+        extractGlobalName(bitcast (_:Type GV:GlobalName to _:Type))
     =>
         GV
     

@@ -25,6 +25,10 @@ module GOLLVM-RUNTIME-SYNTAX
                     |typedslicecopy(LocalName, ValueRef, LocalName, ValueRef, LocalName, ValueRef)
                     //  makeslice(Dst, ElemTD, Len, Cap)
                     |makeslice(LocalName, ValueRef, ValueRef, ValueRef)
+                    //  ifaceE2T2(Convertable, ToTD, FromTD, FromData, ToData)
+                    |ifaceE2T2(LocalName, ValueRef, ValueRef, LocalName, LocalName)
+                    //  ifaceI2T2(Convertable, ToTD, FromInterType, FromData, ToData)
+                    |ifaceI2T2(LocalName, ValueRef, ValueRef, LocalName, LocalName)
 endmodule
 
 /*
@@ -97,6 +101,30 @@ module RUNTIME-PREPROCESS
     =>
         makeslice(Dst, ElemTD, Len, Cap)
     ...</k>
+
+    rule <k>
+        NonVoidGlobalCall (Convertable:LocalName, _:Type, @runtime.ifaceE2T2,
+                        _:ParamFactor,  //  undef
+                        _:Type _:ParamAttrs ToTD:ValueRef, // "to" type descriptor
+                        _:Type _:ParamAttrs FromTD:ValueRef, // "from" descriptor
+                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+                        _:Type _:ParamAttrs ToData:LocalName // "to"/"return" data
+                        )
+    =>
+        ifaceE2T2(Convertable, ToTD, FromTD, FromData, ToData)
+    ... </k>
+
+    rule <k>
+        NonVoidGlobalCall(Convertable:LocalName, _:Type, @runtime.ifaceI2T2,
+                        _:ParamFactor,  //  undef
+                        _:Type _:ParamAttrs ToTD:ValueRef, // "to" type descriptor
+                        _:Type _:ParamAttrs FromInterType:ValueRef, // "from" interfacetype
+                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+                        _:Type _:ParamAttrs ToData:LocalName // "to"/"return" data
+        )
+    =>
+        ifaceI2T2(Convertable, ToTD, FromInterType, FromData, ToData)
+    ... </k>
 endmodule
 
 /*
@@ -165,5 +193,37 @@ module GOLLVM-RUNTIME
     =>
         addrMapInsert(Dst, allocArray(ElemTD, castIntPrim(Cap), heap))
     ... </k> requires toIntCastable(Cap)
+
+    rule [TifaceE2T2true]: <k>
+        ifaceE2T2(Convertable:LocalName, ToTD:ValueRef, FromTD:ValueRef, FromData:LocalName, ToData:LocalName)
+    =>
+        memcpy(ToData, FromData, SizeOfType(ToTD))
+    ~>  updatePrim(Convertable, true)
+    ... </k> requires eqtype(ToTD, FromTD)
+
+    rule [TifaceE2T2false]: <k>
+        ifaceE2T2(Convertable:LocalName, ToTD:ValueRef, FromTD:ValueRef, FromData:LocalName, ToData:LocalName)
+    =>
+        // TODO memclr ToData
+        memcpy(ToData, FromData, SizeOfType(ToTD))
+    ~>  updatePrim(Convertable, false)
+    ... </k> requires notBool eqtype(ToTD, FromTD)
+
+    rule [TifaceI2T2true]: <k>
+        ifaceI2T2(Convertable:LocalName, ToTD:ValueRef, FromInterType:ValueRef, FromData:LocalName, ToData:LocalName)
+    =>
+        memcpy(ToData, FromData, SizeOfType(ToTD))
+    ~> updatePrim (Convertable, true)
+    ... </k>
+    requires eqtype(ToTD, getTypeOfInterfaceType(extractGlobalName(FromInterType)))
+
+    rule [TifaceI2T2false]: <k>
+        ifaceI2T2(Convertable:LocalName, ToTD:ValueRef, FromInterType:ValueRef, FromData:LocalName, ToData:LocalName)
+    =>
+        // TODO memclr
+        memcpy(ToData, FromData, SizeOfType(ToTD))
+    ~> updatePrim (Convertable, false)
+    ... </k>
+    requires notBool eqtype(ToTD, getTypeOfInterfaceType(extractGlobalName(FromInterType)))
 
 endmodule

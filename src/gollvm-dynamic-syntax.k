@@ -33,10 +33,13 @@ module LLVM-TYPE-DYNAMIC-SYNTAX
                 |   newLenOfArrayType(Type, Int) [function]
                 |   valueTypeOfMapType(GlobalName) [function]
                 |   valueTypeOfMapTypeConstGepExpr(ValueRef) [function]
+                |   getTypeOfInterfaceType(GlobalName) [function]
     syntax Bool ::= isValidTypeIdx(Type, List) [function]
                 //  List of Type, Idxs
                 |   isValidTypeListIdx(List, List) [function]
     syntax Bool ::= isBasicTypeSort(Type) [function]
+                // TODO implement eqtype for TD/Type
+                |   eqtype(Type, Type) [function]
 
 endmodule
 
@@ -174,6 +177,12 @@ module LLVM-TYPE-DYNAMIC
     =>
         getTypeOfGlobalV(extractGlobalName(GepTD)) ==K %PtrType.0
     requires isGepTD(GepTD)
+
+    rule eqtype(L:Type, R:Type) => L ==K R [owise]
+    //  TODO measure accurate _type*
+    rule eqtype(L:ValueRef, R:ValueRef) => extractGlobalName(L) ==K extractGlobalName(R)
+
+    rule getTypeOfInterfaceType(InterfaceTD:GlobalName) => {readConst(InterfaceTD, ListItem(0))}:>ValueRef
 
 endmodule
 
