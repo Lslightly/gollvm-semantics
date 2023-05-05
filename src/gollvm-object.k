@@ -258,10 +258,16 @@ module OBJECT
         <mem>
             Mem => Mem [ Base <- updateMapOfObject(searchObjAtBase (Base), Key, ValPtr) ]
         </mem>
-    rule [TupdateObjListAtLocalV]: <k> updateObjListAtLocalV(V:LocalName, Idxs:Ints, NewVal:Content)
+    rule [TupdateObjListAtLocalV]: <k> updateObjListAtLocalV(V:LocalName, Idxs:Ints, NewVal:KItem)
     => 
-        updateObjList(appendOffset(baseOffsetOf(V), createIdxList(Idxs)), NewVal)
+        updateObjList(appendOffset(baseOffsetOf(V), createIdxList(Idxs)), nonAddr(NewVal))
         ... </k>
+        requires isBaseOffsetSort(addressValOf(V)) [owise]
+    rule [TupdateObjListAtLocalVContent]: <k>
+        updateObjListAtLocalV (V:LocalName, Idxs:Ints, NewVal:Content)
+    =>
+        updateObjList(appendOffset(baseOffsetOf(V), createIdxList(Idxs)), NewVal)
+    ... </k>
         requires isBaseOffsetSort(addressValOf(V))
     
     rule <k> updateRefInMap (Addr:BaseMapIdx, Ref:LocalName) => updateObjMap (Addr, addressValOf(Ref)) ...</k>

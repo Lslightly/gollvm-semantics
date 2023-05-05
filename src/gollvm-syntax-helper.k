@@ -3,6 +3,7 @@
 */
 requires "gollvm-syntax.k"
 requires "gollvm-configuration.k"
+requires "constant.k"
 module GOLLVM-SYNTAX-HELPER-SYNTAX
     imports GOLLVM-SYNTAX
 
@@ -10,10 +11,13 @@ module GOLLVM-SYNTAX-HELPER-SYNTAX
     syntax GlobalName ::= extractGlobalName(ValueRef) [function]
 
 // judge whether is the specified format of code
-    syntax Bool ::= isGepTD(ValueRef) [function]
+    syntax Bool ::= isGepConst(ValueRef) [function]
+                |   isBitcastConst(ValueRef) [function]
+    
 endmodule
 
 module GOLLVM-SYNTAX-HELPER
+    imports CONSTANT
     imports GOLLVM-SYNTAX-HELPER-SYNTAX
 
     rule [TextractGlobalNameGep]:
@@ -24,7 +28,13 @@ module GOLLVM-SYNTAX-HELPER
         extractGlobalName(bitcast (_:Type GV:GlobalName to _:Type))
     =>
         GV
+    rule [TextractGlobalNameGV]:
+        extractGlobalName(GV:GlobalName)
+    =>
+        GV
     
-    rule isGepTD (_:ValueRef) => false [owise]
-    rule isGepTD (getelementptr _:OptInBounds(_:Type, _:ReturnedVal)) => true
+    rule isGepConst (_:ValueRef) => false [owise]
+    rule isGepConst (getelementptr _:OptInBounds(_:Type, _:Type GV:GlobalName, _:ReturnedVal)) => true requires isConst(GV)
+    rule isBitcastConst(_:ValueRef) => false [owise]
+    rule isBitcastConst(bitcast (_:Type GV:GlobalName to _:Type)) => true requires isConst(GV)
 endmodule

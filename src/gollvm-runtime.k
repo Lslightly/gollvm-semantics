@@ -18,7 +18,7 @@ module GOLLVM-RUNTIME-SYNTAX
                     //  mapassign(Dst, MapTypeValueRef, Hmap, Key)
                     |mapassign(LocalName, ValueRef, LocalName, ValueRef)
                     //  memcpy(DstPtr, SrcPtr, Size)
-                    |memcpy(LocalName, LocalName, Int)
+                    |memcpy(SymbolicValueRef, SymbolicValueRef, Int)
                     //  growslice(RetPtr, ElemType, OldArray, Cap)
                     |growslice(LocalName, ValueRef, LocalName, ValueRef)
                     //  typedslicecopy(CopyLen, Ty, DstPtr, DstLen, SrcPtr, SrcLen)
@@ -27,19 +27,19 @@ module GOLLVM-RUNTIME-SYNTAX
                     |makeslice(LocalName, ValueRef, ValueRef, ValueRef)
                     //  ifaceE2T2(Convertable, ToTD, FromTD, FromData, ToData)
                     |ifaceE2T2(LocalName, ValueRef, ValueRef, LocalName, LocalName)
-                    //  ifaceI2T2(Convertable, ToTD, FromInterType, FromData, ToData)
+                    //  ifaceI2T2(Convertable, ToTD, FromTab, FromData, ToData)
                     |ifaceI2T2(LocalName, ValueRef, ValueRef, LocalName, LocalName)
                     //  ifaceE2E2(RetPtr, FromTD, FromData)
                     |ifaceE2E2(LocalName, ValueRef, LocalName)
                     //  ifaceE2I2(RetPtr, ToInterType, FromTD, FromData)
                     |ifaceE2I2(LocalName, ValueRef, ValueRef, LocalName)
-                    //  ifaceI2E2(RetPtr, FromInterType, FromData)
+                    //  ifaceI2E2(RetPtr, FromTab, FromData)
                     |ifaceI2E2(LocalName, ValueRef, LocalName)
-                    //  ifaceI2I2(RetPtr, ToInterType, FromInterType, FromData)
+                    //  ifaceI2I2(RetPtr, ToInterType, FromTab, FromData)
                     |ifaceI2I2(LocalName, ValueRef, ValueRef, LocalName)
                     //  ifaceE2T2p(RetStruct, ToTD, FromTD, FromData)
                     |ifaceE2T2p(LocalName, ValueRef, ValueRef, LocalName)
-                    //  ifaceI2T2p(RetStruct, ToTD, FromInterType, FromData)
+                    //  ifaceI2T2p(RetStruct, ToTD, FromTab, FromData)
                     |ifaceI2T2p(LocalName, ValueRef, ValueRef, LocalName)
 endmodule
 
@@ -74,6 +74,17 @@ module RUNTIME-PREPROCESS
     rule <k>
     VoidGlobalCall (@llvm.memcpy.p0i8.p0i8.i64, _:Type _:ParamAttrs DstPtr:LocalName , _:Type _:ParamAttrs SrcPtr:LocalName, _:Type _:ParamAttrs Size:Int, _:ParamFactor) => memcpy(DstPtr, SrcPtr, Size) ...
     </k>
+    // TODO copy const
+    // rule <k>
+    //     VoidGlobalCall(@llvm.memcpy.p0i8.p0i8.i64,
+    //         _:Type _:ParamAttrs DstPtr:LocalName,
+    //         _:Type _:ParamAttrs SrcPtr:ValueRef,
+    //         _:Type _:ParamAttrs Size:Int, _:ParamFactor
+    //     )
+    // =>
+        
+    // ... </k>
+    // requires isGepConst(SrcPtr) orBool
 
     rule <k>
     VoidGlobalCall (@runtime.growslice,
@@ -130,71 +141,71 @@ module RUNTIME-PREPROCESS
         NonVoidGlobalCall(Convertable:LocalName, _:Type, @runtime.ifaceI2T2,
                         _:ParamFactor,  //  undef
                         _:Type _:ParamAttrs ToTD:ValueRef, // "to" type descriptor
-                        _:Type _:ParamAttrs FromInterType:ValueRef, // "from" interfacetype
+                        _:Type _:ParamAttrs FromTab:ValueRef, // "from" interfacetype
                         _:Type _:ParamAttrs FromData:LocalName, // "from" data
                         _:Type _:ParamAttrs ToData:LocalName // "to"/"return" data
         )
     =>
-        ifaceI2T2(Convertable, ToTD, FromInterType, FromData, ToData)
+        ifaceI2T2(Convertable, ToTD, FromTab, FromData, ToData)
     ... </k>
 
     rule <k>
         VoidGlobalCall (@runtime.ifaceE2E2,
-                        _:Type _:ParamAttrs RetPtr:ValueRef, // retptr
+                        _:Type _:ParamAttrs RetPtr:LocalName, // retptr
                         _:Type _:ParamAttrs FromTD:ValueRef, // "from" type descriptor
-                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+                        _:Type _:ParamAttrs FromData:LocalName // "from" data
         )
     =>
         ifaceE2E2(RetPtr, FromTD, FromData)
     ... </k>
     rule <k>
         VoidGlobalCall (@runtime.ifaceE2I2,
-                        _:Type _:ParamAttrs RetPtr:ValueRef, // retptr
+                        _:Type _:ParamAttrs RetPtr:LocalName, // retptr
                         _:Type _:ParamAttrs ToInterType:ValueRef, // "to" interfacetype
                         _:Type _:ParamAttrs FromTD:ValueRef, // "from" type descriptor
-                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+                        _:Type _:ParamAttrs FromData:LocalName // "from" data
         )
     =>
         ifaceE2I2(RetPtr, ToInterType, FromTD, FromData)
     ... </k>
     rule <k>
         VoidGlobalCall (@runtime.ifaceI2E2,
-                        _:Type _:ParamAttrs RetPtr:ValueRef, // retptr
-                        _:Type _:ParamAttrs FromInterType:ValueRef, // "from" interfacetype
-                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+                        _:Type _:ParamAttrs RetPtr:LocalName, // retptr
+                        _:Type _:ParamAttrs FromTab:ValueRef, // "from" interfacetype
+                        _:Type _:ParamAttrs FromData:LocalName // "from" data
         )
     =>
-        ifaceI2E2(RetPtr, FromInterType, FromData)
+        ifaceI2E2(RetPtr, FromTab, FromData)
     ... </k>
     rule <k>
         VoidGlobalCall (@runtime.ifaceI2I2,
-                        _:Type _:ParamAttrs RetPtr:ValueRef, // retptr
+                        _:Type _:ParamAttrs RetPtr:LocalName, // retptr
                         _:Type _:ParamAttrs ToInterType:ValueRef, // "to" interfacetype
-                        _:Type _:ParamAttrs FromInterType:ValueRef, // "from" interfacetype
-                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+                        _:Type _:ParamAttrs FromTab:ValueRef, // "from" interfacetype
+                        _:Type _:ParamAttrs FromData:LocalName // "from" data
         )
     =>
-        ifaceI2I2(RetPtr, ToInterType, FromInterType, FromData)
+        ifaceI2I2(RetPtr, ToInterType, FromTab, FromData)
     ... </k>
     rule <k>
-        NonVoidGlobalCall (RetStruct:LocalName, RetType:Type, @runtime.ifaceE2T2p,
+        NonVoidGlobalCall (RetStruct:LocalName, _:Type, @runtime.ifaceE2T2p,
                         _:ParamFactor,  //  undef
                         _:Type _:ParamAttrs ToTD:ValueRef, // "to" type descriptor
                         _:Type _:ParamAttrs FromTD:ValueRef, // "from" type descriptor
-                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+                        _:Type _:ParamAttrs FromData:LocalName // "from" data
         )
     =>
         ifaceE2T2p (RetStruct, ToTD, FromTD, FromData)
     ... </k>
     rule <k>
-        NonVoidGlobalCall (RetStruct:LocalName, RetType:Type, @runtime.ifaceI2T2p,
+        NonVoidGlobalCall (RetStruct:LocalName, _:Type, @runtime.ifaceI2T2p,
                         _:ParamFactor,  //  undef
                         _:Type _:ParamAttrs ToTD:ValueRef, // "to" type descriptor
-                        _:Type _:ParamAttrs FromInterType:ValueRef, // "from" interfacetype
-                        _:Type _:ParamAttrs FromData:LocalName, // "from" data
+                        _:Type _:ParamAttrs FromTab:ValueRef, // "from" interfacetype
+                        _:Type _:ParamAttrs FromData:LocalName // "from" data
         )
     =>
-        ifaceI2T2p (RetStruct, ToTD, FromInterType, FromData)
+        ifaceI2T2p (RetStruct, ToTD, FromTab, FromData)
     ... </k>
 
 endmodule
@@ -282,22 +293,57 @@ module GOLLVM-RUNTIME
     ... </k> requires notBool eqtype(ToTD, FromTD)
 
     rule [TifaceI2T2true]: <k>
-        ifaceI2T2(Convertable:LocalName, ToTD:ValueRef, FromInterType:ValueRef, FromData:LocalName, ToData:LocalName)
+        ifaceI2T2(Convertable:LocalName, ToTD:ValueRef, FromTab:ValueRef, FromData:LocalName, ToData:LocalName)
     =>
         memcpy(ToData, FromData, SizeOfType(ToTD))
     ~> updatePrim (Convertable, true)
     ... </k>
-    requires eqtype(ToTD, getTypeOfInterfaceType(extractGlobalName(FromInterType)))
+    requires eqtype(ToTD, getTDFromTabConst(extractGlobalName(FromTab)))
 
     rule [TifaceI2T2false]: <k>
-        ifaceI2T2(Convertable:LocalName, ToTD:ValueRef, FromInterType:ValueRef, FromData:LocalName, ToData:LocalName)
+        ifaceI2T2(Convertable:LocalName, ToTD:ValueRef, FromTab:ValueRef, FromData:LocalName, ToData:LocalName)
     =>
         // TODO memclr
         memcpy(ToData, FromData, SizeOfType(ToTD))
     ~> updatePrim (Convertable, false)
     ... </k>
-    requires notBool eqtype(ToTD, getTypeOfInterfaceType(extractGlobalName(FromInterType)))
+    requires notBool eqtype(ToTD, getTDFromTabConst(extractGlobalName(FromTab)))
 
-    // TODO EITp
+    //  TODO iface EITp nil case
+    rule [TifaceE2E2]: <k>
+        ifaceE2E2(RetPtr:LocalName, FromTD:ValueRef, FromData:LocalName)
+    =>
+        updateObjListAtLocalV(RetPtr, 0, 0, .Ints, FromTD)
+    ~>  updateObjListAtLocalV(RetPtr, 0, 1, .Ints, baseOffsetOf(FromData))
+    ~>  updateObjListAtLocalV(RetPtr, 1, true)
+    ... </k>
+    requires nonNil(FromTD)
+
+    rule [TifaceE2I2]: <k>
+        ifaceE2I2(RetPtr:LocalName, ToInterType:ValueRef, FromTD:ValueRef, FromData:LocalName)
+    =>
+        updateObjListAtLocalV(RetPtr, 0, 0, .Ints, FromTD)
+    ~>  updateObjListAtLocalV(RetPtr, 0, 1, .Ints, baseOffsetOf(FromData))
+    ~>  updateObjListAtLocalV(RetPtr, 1, true)
+    ... </k>
+    requires implement(ToInterType, FromTD)
+
+    rule [TifaceI2E2]: <k>
+        ifaceI2E2(RetPtr:LocalName, FromTab:ValueRef, FromData:LocalName)
+    =>
+        updateObjListAtLocalV(RetPtr, 0, 0, .Ints, getTDFromTab(FromTab))
+    ~>  updateObjListAtLocalV(RetPtr, 0, 1, .Ints, baseOffsetOf(FromData))
+    ~>  updateObjListAtLocalV(RetPtr, 1, true)
+    ... </k>
+        requires nonNil(FromTab)
+    
+    rule [TifaceI2I2]: <k>
+        ifaceI2I2 (RetPtr:LocalName, ToInterType:ValueRef, FromTab:ValueRef, FromData:LocalName)
+    =>
+        updateObjListAtLocalV(RetPtr, 0, 0, .Ints, getTDFromTab(FromTab))
+    ~>  updateObjListAtLocalV(RetPtr, 0, 1, .Ints, baseOffsetOf(FromData))
+    ~>  updateObjListAtLocalV(RetPtr, 1, true)
+    ... </k>
+        requires implement(ToInterType, getTDFromTab(FromTab))
 
 endmodule

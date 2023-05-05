@@ -7,6 +7,7 @@ module CONSTANT-SYNTAX
     imports GOLLVM-CONFIGURATION
     imports LIST2LIST-SYNTAX
     imports LIST
+    syntax Bool ::= isConst(GlobalName) [function]
     syntax GlobalReg ::= globalReg(Type, KItem)
 // read
                         |getGlobalReg(GlobalName) [function]
@@ -20,6 +21,9 @@ endmodule
 module CONSTANT
     imports CONSTANT-SYNTAX
 
+    rule [[ isConst(GV:GlobalName) => GV in_keys(MAP) ]]
+    <globalRegisters> MAP </globalRegisters>
+
 // ------GlobalReg
 // read
     rule [TgetGlobalReg]:
@@ -29,7 +33,7 @@ module CONSTANT
         {MAP[GV]}:>GlobalReg
     ]]
     <globalRegisters> MAP </globalRegisters>
-    requires GV in_keys(MAP)
+    requires isConst(GV)
 
 //  create
 
@@ -45,6 +49,7 @@ module CONSTANT
 endmodule
 
 module CONSTANT-DYNAMIC-SYNTAX
+    imports GOLLVM-SYNTAX-HELPER
     imports CONSTANT-SYNTAX
     imports GOLLVM-CONFIGURATION
     imports LIST-HELPER-SYNTAX
@@ -57,6 +62,7 @@ module CONSTANT-DYNAMIC-SYNTAX
                 |   getValOfGlobalV(GlobalName) [function]
     //  read Constant with index list
     syntax KItem ::= readConst(GlobalName, List) [function]
+    syntax GlobalName ::= readConstAndExtractGlobalName(GlobalName, List) [function]
 // evaluate
     syntax KItem ::= evalConst(ConstValueRef) [function]
 endmodule
@@ -78,6 +84,12 @@ module CONSTANT-DYNAMIC
         readConst (V:GlobalName, IdxList:List)
     =>
         getElemMultiDim(getValOfGlobalV(V), IdxList)
+
+    rule [TreadConstAndExtractGlobalName]:
+        readConstAndExtractGlobalName(V:GlobalName, IdxList:List)
+    =>
+        extractGlobalName({readConst(V, IdxList)}:>ValueRef)
+
 //  evaluate
     rule evalConst(getelementptr _:OptInBounds(_:Type, _Type GlobalC:GlobalName, Idxs:ReturnedVal)) => readConst(GlobalC, getValsOfReturnedVal(Idxs))
 endmodule

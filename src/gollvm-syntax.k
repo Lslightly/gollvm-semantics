@@ -61,6 +61,7 @@ module GOLLVM-SYNTAX
     syntax GlobalVar ::= r"@\\\"[^\\\"]*\\\"" [token]
 
     syntax LocalName ::= LocalVar | LocalValID
+    syntax String ::= LocalNameToString(LocalName) [function, total, hook(STRING.token2string)]
     syntax Bool ::= isLocalNameSort(KItem) [function]
     rule isLocalNameSort(_:LocalName) => true
     rule isLocalNameSort(_) => false [owise]

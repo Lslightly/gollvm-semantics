@@ -4,6 +4,7 @@ requires "gollvm-dynamic-syntax.k"
 requires "gollvm-dyn-insts.k"
 requires "gollvm-object.k"
 requires "list-helper.k"
+requires "constant.k"
 
 module GOLLVM-MEM-INCLUDE
     imports GOLLVM-SYNTAX
@@ -15,11 +16,12 @@ endmodule
     非地址值相关语法和函数
 */
 module NON-ADDR-SYNTAX
+    imports CONSTANT-SYNTAX
     imports GOLLVM-MEM-INCLUDE
 
     //  nonAddr for primitive type
     syntax Bool ::= isNonAddrSort(KItem) [function]
-    syntax NonAddr ::= nonAddr(KItem)
+    syntax NonAddr ::= nonAddr(KItem) | GlobalReg
     syntax KItem ::= NonAddr
     syntax KResult ::= NonAddr
     //  nonAddr(V) -> V
@@ -27,12 +29,15 @@ module NON-ADDR-SYNTAX
 endmodule
 
 module NON-ADDR
+    imports CONSTANT
     imports NON-ADDR-SYNTAX
+    imports GOLLVM-MEM-SYNTAX
 
-    rule isNonAddrSort(_:NonAddr) => true
-    rule isNonAddrSort(_) => false [owise]
+    rule isNonAddrSort(_:Address) => false
+    rule isNonAddrSort(_) => true [owise]
 
     rule trimWrapperNonAddr(nonAddr(I:KItem)) => I
+    rule trimWrapperNonAddr(S:KItem) => S [owise]
     
 endmodule
 
@@ -105,6 +110,7 @@ module GOLLVM-MEM-SYNTAX
     syntax Bool ::= isAddr(LocalName) [function]
                 |   isBaseOffsetSort(Address) [function]
                 |   isPrim(LocalName) [function]
+                |   nonNil(ValueRef) [function]
 
     //  lookup %local in local2prim and return the value
     syntax KItem ::= lookUpPrim(LocalName) [function]
@@ -212,6 +218,9 @@ module GOLLVM-MEM
         <local2prim>
             Local2Prim
         </local2prim>
+
+    rule nonNil(null) => false
+    rule nonNil(_:ValueRef) => true [owise]
 
     rule isBaseOffsetSort(_:BaseOffset) => true
     rule isBaseOffsetSort(_:Address) => false [owise]

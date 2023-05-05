@@ -6,12 +6,29 @@ requires "constant.k"
 requires "list-helper.k"
 requires "gollvm-syntax-helper.k"
 
+module GOLLVM-TYPE-DESCRIPTOR-SYNTAX
+    imports GOLLVM-SYNTAX
+    imports CONSTANT-SYNTAX
+    imports CONSTANT-DYNAMIC-SYNTAX
+    imports BOOL
+    syntax Bool ::= isStructTypeTD(GlobalName) [function]
+endmodule
+
+module GOLLVM-TYPE-DESCRIPTOR
+    imports GOLLVM-TYPE-DESCRIPTOR-SYNTAX
+    imports BOOL
+    imports CONSTANT
+    imports STRING
+    rule isStructTypeTD(GV:GlobalName) => LocalNameToString({getTypeOfGlobalV(GV)}:>LocalName) ==String "%StructType.0"
+endmodule
+
 module LLVM-TYPE-DYNAMIC-SYNTAX
     imports GOLLVM-SYNTAX
     imports GOLLVM-CONFIGURATION
     imports GOLLVM-DYNAMIC-SYNTAX
     imports CONSTANT-SYNTAX
     imports CONSTANT-DYNAMIC-SYNTAX
+    imports GOLLVM-TYPE-DESCRIPTOR-SYNTAX
     imports LIST
     //  Type -> List with default value uninit
     //  TypeList -> List with default value uninit
@@ -28,18 +45,30 @@ module LLVM-TYPE-DYNAMIC-SYNTAX
     syntax Type ::= trimPtrType(Type) [function]
                 |   subType(Type, List) [function]
                 |   subTypeList(TypeList, List) [function]
+                |   subTypeTD(GlobalName, List) [function]
                 //  matchSubType(ParentType, Size)
                 |   matchSubType(Type, Int) [function]
                 |   newLenOfArrayType(Type, Int) [function]
                 |   valueTypeOfMapType(GlobalName) [function]
                 |   valueTypeOfMapTypeConstGepExpr(ValueRef) [function]
-                |   getTypeOfInterfaceType(GlobalName) [function]
     syntax Bool ::= isValidTypeIdx(Type, List) [function]
                 //  List of Type, Idxs
                 |   isValidTypeListIdx(List, List) [function]
     syntax Bool ::= isBasicTypeSort(Type) [function]
-                // TODO implement eqtype for TD/Type
+                // TODO eqtype for TD/Type
                 |   eqtype(Type, Type) [function]
+                //  implement(interfacetype TD, _type TD)
+                |   implement(ValueRef, ValueRef) [function]
+                /*
+                    getTDFromTab tab is a field of iface struct in gccgo
+                    tab is an unsafe.Pointer, whose structure is actually:
+                    type tab struct {
+                        type *_type
+                        methods []uintptr // func pointer
+                    }
+                */
+    syntax ValueRef ::= getTDFromTab(ValueRef) [function]
+                |   getTDFromTabConst(GlobalName) [function]
 
 endmodule
 
@@ -56,6 +85,8 @@ module LLVM-TYPE-DYNAMIC
     imports LIST
     imports TYPE-DEFINES
     imports CONSTANT-DYNAMIC
+    imports GOLLVM-TYPE-DESCRIPTOR
+    imports LIST-HELPER
 
     // rule initOfType (metadata) => uninit
     // rule initOfType (_:X86Type) => uninit
@@ -113,8 +144,22 @@ module LLVM-TYPE-DYNAMIC
     rule subType({ TyList }, L:List) => subTypeList(TyList, L)
     rule subType(<{ TyList }>, L:List) => subTypeList(TyList, L)
     rule subType(TypeV:LocalName, L:List) => subType(realType(TypeV), L)
+    rule [TsubTypeTD]: subType(getelementptr _:OptInBounds(_:Type, _:Type TD:GlobalName , _:ReturnedVal), L:List) => subTypeTD(TD, L) requires isLocalNameSort(getTypeOfGlobalV(TD))
 
     rule subTypeList(TyList:TypeList, ListItem(I:Int) L:List) => subType({convTypeList2List(TyList)[I]}:>Type, L)
+
+    rule [TsubTypeTDStruct]: subTypeTD(TD:GlobalName, ListItem(I:Int) Remains:List) =>
+    subTypeTD(
+        readConstAndExtractGlobalName(  //  the I th field's typ field
+            readConstAndExtractGlobalName(  //  fields' array pointer
+                TD, createIdxList(1, 0)
+            ),
+            createIdxList(I, 2)
+        ),
+        Remains
+    )
+    requires isStructTypeTD(TD)
+    rule subTypeTD(TD:GlobalName, .List) => TD
 
     rule isValidTypeIdx (_:Type, .List) => true [priority(49)]
     rule isValidTypeIdx(_:PrimType, .List) => true
@@ -176,13 +221,17 @@ module LLVM-TYPE-DYNAMIC
         isBasicTypeSort(GepTD:ValueRef)
     =>
         getTypeOfGlobalV(extractGlobalName(GepTD)) ==K %PtrType.0
-    requires isGepTD(GepTD)
+    requires isGepConst(GepTD)
 
     rule eqtype(L:Type, R:Type) => L ==K R [owise]
     //  TODO measure accurate _type*
     rule eqtype(L:ValueRef, R:ValueRef) => extractGlobalName(L) ==K extractGlobalName(R)
 
-    rule getTypeOfInterfaceType(InterfaceTD:GlobalName) => {readConst(InterfaceTD, ListItem(0))}:>ValueRef
+    //  TODO implement
+    rule implement(_:ValueRef, _:ValueRef) => true
+
+    rule getTDFromTabConst(Tab:GlobalName) => {readConst(Tab, ListItem(0))}:>ValueRef
+    rule getTDFromTab(Tab:GlobalName) => getTDFromTabConst(extractGlobalName(Tab))
 
 endmodule
 
