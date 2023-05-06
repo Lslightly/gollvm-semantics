@@ -4,7 +4,9 @@ type I interface {
 	String()
 }
 
-type S struct{}
+type S struct {
+	a int
+}
 
 func (S) String() {}
 

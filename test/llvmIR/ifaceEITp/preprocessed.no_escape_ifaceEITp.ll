@@ -107,7 +107,7 @@ $int..p = comdat any
 @go..C36 = internal constant [1 x %structField.0] [%structField.0 { { i8*, i64 }* @go..C29, { i8*, i64 }* @go..C30, %_type.0* @int..d, { i8*, i64 }* null, i64 0 }]
 @imt..interface_4String_bfunc_8_9_8_9_5..main.S = internal constant { %_type.0*, void (i8*, %functionDescriptor.0*)* } { %_type.0* getelementptr inbounds (%StructType.0, %StructType.0* @main.S..d, i32 0, i32 0), void (i8*, %functionDescriptor.0*)* @main.S.String }
 @pimt..interface_4String_bfunc_8_9_8_9_5..main.S = internal constant { %_type.0*, void (i8*, %functionDescriptor.0*)* } { %_type.0* getelementptr inbounds (%PtrType.0, %PtrType.0* @main.S..p, i32 0, i32 0), void (i8*, %functionDescriptor.0*)* @main.S.String }
-@const.18 = private constant [263 x i8] c"0w\AF\0C\92t\08\02A\E1\C1\07\E6\D6\18\E6path\09command-line-arguments\0Abuild\09-compiler=gccgo\0Abuild\09CGO_ENABLED=1\0Abuild\09CGO_CFLAGS=\0Abuild\09CGO_CPPFLAGS=\0Abuild\09CGO_CXXFLAGS=\0Abuild\09CGO_LDFLAGS=\0Abuild\09GOARCH=amd64\0Abuild\09GOEXPERIMENT=fieldtrack\0Abuild\09GOOS=linux\0Abuild\09GOAMD64=v1\0A\F92C1\86\18 r\00\82B\10A\16\D8\F2\00", align 1
+@const.18 = private constant [305 x i8] c"0w\AF\0C\92t\08\02A\E1\C1\07\E6\D6\18\E6path\09command-line-arguments\0Abuild\09-compiler=gccgo\0Abuild\09-gccgoflags=-fno-go-optimize-allocs\0Abuild\09CGO_ENABLED=1\0Abuild\09CGO_CFLAGS=\0Abuild\09CGO_CPPFLAGS=\0Abuild\09CGO_CXXFLAGS=\0Abuild\09CGO_LDFLAGS=\0Abuild\09GOARCH=amd64\0Abuild\09GOEXPERIMENT=fieldtrack\0Abuild\09GOOS=linux\0Abuild\09GOAMD64=v1\0A\F92C1\86\18 r\00\82B\10A\16\D8\F2\00", align 1
 @main.main..init0..f = local_unnamed_addr constant %functionDescriptor.0 { i64 ptrtoint (void (i8*)* @main.main..init0 to i64) }
 @main.struct_4runtime_0gList_cruntime_0n_bint32_5..eq..f = local_unnamed_addr constant %functionDescriptor.0 { i64 ptrtoint (i8 (i8*, i8*, i8*)* @main.struct_4runtime_0gList_cruntime_0n_bint32_5..eq to i64) }
 @main._632_7uintptr..eq..f = local_unnamed_addr constant %functionDescriptor.0 { i64 ptrtoint (i8 (i8*, i8*, i8*)* @main._632_7uintptr..eq to i64) }
@@ -162,7 +162,7 @@ declare void @runtime.panicmem(i8*) local_unnamed_addr #1
 
 define void @main.main..init0(i8* nest nocapture readnone %nest.2) #0 {
 entry:
-  call void @runtime.setmodinfo(i8* nest undef, i8* getelementptr inbounds ([263 x i8], [263 x i8]* @const.18, i64 0, i64 0), i64 262)
+  call void @runtime.setmodinfo(i8* nest undef, i8* getelementptr inbounds ([305 x i8], [305 x i8]* @const.18, i64 0, i64 0), i64 304)
   ret void
 }
 
@@ -212,127 +212,123 @@ declare void @runtime..import(i8*) local_unnamed_addr #0
 
 define void @main.main(i8* nest nocapture readnone %nest.1) local_unnamed_addr #0 {
 entry:
-  %tmpv.1 = alloca %functionDescriptor.0, align 8, !go_addrtaken !3
-  %tmpv.3 = alloca %functionDescriptor.0, align 8, !go_addrtaken !3
   %sret.actual.0 = alloca { { %_type.0*, i8* }, i8 }, align 8
   %sret.actual.1 = alloca { %.1, i8 }, align 8
   %sret.actual.2 = alloca { { %_type.0*, i8* }, i8 }, align 8
   %sret.actual.3 = alloca { %.1, i8 }, align 8
-  %tmpv.17 = alloca %functionDescriptor.0, align 8, !go_addrtaken !3
-  %tmpv.22 = alloca %functionDescriptor.0, align 8, !go_addrtaken !3
-  %cast.37 = bitcast %functionDescriptor.0* %tmpv.1 to i8*
-  %0 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %tmpv.1, i64 0, i32 0
+  %call.0 = call i8* @runtime.newobject(i8* nest undef, %_type.0* getelementptr inbounds (%StructType.0, %StructType.0* @main.S..d, i64 0, i32 0))
+  %0 = bitcast i8* %call.0 to i64*
   store i64 0, i64* %0, align 8
-  %cast.42 = bitcast %functionDescriptor.0* %tmpv.3 to i8*
-  %1 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %tmpv.3, i64 0, i32 0
+  %call.1 = call i8* @runtime.newobject(i8* nest undef, %_type.0* getelementptr inbounds (%StructType.0, %StructType.0* @main.S..d, i64 0, i32 0))
+  %1 = bitcast i8* %call.1 to i64*
   store i64 0, i64* %1, align 8
-  call void @runtime.ifaceE2E2({ { %_type.0*, i8* }, i8 }* nonnull sret({ { %_type.0*, i8* }, i8 }) "go_sret" %sret.actual.0, i8* nest undef, i8* bitcast (%StructType.0* @main.S..d to i8*), i8* nonnull %cast.37)
-  %tmpv.5.sroa.2.0.cast.49.sroa_idx = getelementptr inbounds { { %_type.0*, i8* }, i8 }, { { %_type.0*, i8* }, i8 }* %sret.actual.0, i64 0, i32 1
-  %tmpv.5.sroa.2.0.copyload = load i8, i8* %tmpv.5.sroa.2.0.cast.49.sroa_idx, align 8
-  %2 = and i8 %tmpv.5.sroa.2.0.copyload, 1
+  call void @runtime.ifaceE2E2({ { %_type.0*, i8* }, i8 }* nonnull sret({ { %_type.0*, i8* }, i8 }) "go_sret" %sret.actual.0, i8* nest undef, i8* bitcast (%StructType.0* @main.S..d to i8*), i8* nonnull %call.0)
+  %tmpv.3.sroa.2.0.cast.51.sroa_idx = getelementptr inbounds { { %_type.0*, i8* }, i8 }, { { %_type.0*, i8* }, i8 }* %sret.actual.0, i64 0, i32 1
+  %tmpv.3.sroa.2.0.copyload = load i8, i8* %tmpv.3.sroa.2.0.cast.51.sroa_idx, align 8
+  %2 = and i8 %tmpv.3.sroa.2.0.copyload, 1
   %trunc.1.not = icmp eq i8 %2, 0
   br i1 %trunc.1.not, label fallthrough.1, label then.1
 
 then.1:                                           
-  %tmpv.5.sroa.0.sroa.2.0.tmpv.5.sroa.0.0.cast.49.sroa_cast.sroa_idx43 = getelementptr inbounds { { %_type.0*, i8* }, i8 }, { { %_type.0*, i8* }, i8 }* %sret.actual.0, i64 0, i32 0, i32 1
-  %tmpv.5.sroa.0.sroa.2.0.copyload = load i8*, i8** %tmpv.5.sroa.0.sroa.2.0.tmpv.5.sroa.0.0.cast.49.sroa_cast.sroa_idx43, align 8
-  %tmpv.5.sroa.0.sroa.0.0.tmpv.5.sroa.0.0.cast.49.sroa_cast.sroa_cast = bitcast { { %_type.0*, i8* }, i8 }* %sret.actual.0 to i8**
-  %tmpv.5.sroa.0.sroa.0.0.copyload = load i8*, i8** %tmpv.5.sroa.0.sroa.0.0.tmpv.5.sroa.0.0.cast.49.sroa_cast.sroa_cast, align 8
+  %tmpv.3.sroa.0.sroa.2.0.tmpv.3.sroa.0.0.cast.51.sroa_cast.sroa_idx43 = getelementptr inbounds { { %_type.0*, i8* }, i8 }, { { %_type.0*, i8* }, i8 }* %sret.actual.0, i64 0, i32 0, i32 1
+  %tmpv.3.sroa.0.sroa.2.0.copyload = load i8*, i8** %tmpv.3.sroa.0.sroa.2.0.tmpv.3.sroa.0.0.cast.51.sroa_cast.sroa_idx43, align 8
+  %tmpv.3.sroa.0.sroa.0.0.tmpv.3.sroa.0.0.cast.51.sroa_cast.sroa_cast = bitcast { { %_type.0*, i8* }, i8 }* %sret.actual.0 to i8**
+  %tmpv.3.sroa.0.sroa.0.0.copyload = load i8*, i8** %tmpv.3.sroa.0.sroa.0.0.tmpv.3.sroa.0.0.cast.51.sroa_cast.sroa_cast, align 8
   call void @runtime.printlock(i8* nest undef)
-  call void @runtime.printeface(i8* nest undef, i8* %tmpv.5.sroa.0.sroa.0.0.copyload, i8* %tmpv.5.sroa.0.sroa.2.0.copyload)
+  call void @runtime.printeface(i8* nest undef, i8* %tmpv.3.sroa.0.sroa.0.0.copyload, i8* %tmpv.3.sroa.0.sroa.2.0.copyload)
   call void @runtime.printnl(i8* nest undef)
   call void @runtime.printunlock(i8* nest undef)
   br label fallthrough.1
 
 fallthrough.1:                                    
-  call void @runtime.ifaceE2I2({ %.1, i8 }* nonnull sret({ %.1, i8 }) "go_sret" %sret.actual.1, i8* nest undef, %_type.0* getelementptr inbounds (%InterfaceType.0, %InterfaceType.0* @main.I..d, i64 0, i32 0), i8* bitcast (%StructType.0* @main.S..d to i8*), i8* nonnull %cast.37)
-  %tmpv.8.sroa.2.0.cast.59.sroa_idx = getelementptr inbounds { %.1, i8 }, { %.1, i8 }* %sret.actual.1, i64 0, i32 1
-  %tmpv.8.sroa.2.0.copyload = load i8, i8* %tmpv.8.sroa.2.0.cast.59.sroa_idx, align 8
-  %3 = and i8 %tmpv.8.sroa.2.0.copyload, 1
+  call void @runtime.ifaceE2I2({ %.1, i8 }* nonnull sret({ %.1, i8 }) "go_sret" %sret.actual.1, i8* nest undef, %_type.0* getelementptr inbounds (%InterfaceType.0, %InterfaceType.0* @main.I..d, i64 0, i32 0), i8* bitcast (%StructType.0* @main.S..d to i8*), i8* nonnull %call.0)
+  %tmpv.6.sroa.2.0.cast.61.sroa_idx = getelementptr inbounds { %.1, i8 }, { %.1, i8 }* %sret.actual.1, i64 0, i32 1
+  %tmpv.6.sroa.2.0.copyload = load i8, i8* %tmpv.6.sroa.2.0.cast.61.sroa_idx, align 8
+  %3 = and i8 %tmpv.6.sroa.2.0.copyload, 1
   %trunc.2.not = icmp eq i8 %3, 0
   br i1 %trunc.2.not, label fallthrough.2, label then.2
 
 then.2:                                           
-  %tmpv.8.sroa.0.sroa.2.0.tmpv.8.sroa.0.0.cast.59.sroa_cast.sroa_idx31 = getelementptr inbounds { %.1, i8 }, { %.1, i8 }* %sret.actual.1, i64 0, i32 0, i32 1
-  %tmpv.8.sroa.0.sroa.2.0.copyload = load i8*, i8** %tmpv.8.sroa.0.sroa.2.0.tmpv.8.sroa.0.0.cast.59.sroa_cast.sroa_idx31, align 8
-  %tmpv.8.sroa.0.sroa.0.0.tmpv.8.sroa.0.0.cast.59.sroa_cast.sroa_cast = bitcast { %.1, i8 }* %sret.actual.1 to i8**
-  %tmpv.8.sroa.0.sroa.0.0.copyload = load i8*, i8** %tmpv.8.sroa.0.sroa.0.0.tmpv.8.sroa.0.0.cast.59.sroa_cast.sroa_cast, align 8
+  %tmpv.6.sroa.0.sroa.2.0.tmpv.6.sroa.0.0.cast.61.sroa_cast.sroa_idx31 = getelementptr inbounds { %.1, i8 }, { %.1, i8 }* %sret.actual.1, i64 0, i32 0, i32 1
+  %tmpv.6.sroa.0.sroa.2.0.copyload = load i8*, i8** %tmpv.6.sroa.0.sroa.2.0.tmpv.6.sroa.0.0.cast.61.sroa_cast.sroa_idx31, align 8
+  %tmpv.6.sroa.0.sroa.0.0.tmpv.6.sroa.0.0.cast.61.sroa_cast.sroa_cast = bitcast { %.1, i8 }* %sret.actual.1 to i8**
+  %tmpv.6.sroa.0.sroa.0.0.copyload = load i8*, i8** %tmpv.6.sroa.0.sroa.0.0.tmpv.6.sroa.0.0.cast.61.sroa_cast.sroa_cast, align 8
   call void @runtime.printlock(i8* nest undef)
-  call void @runtime.printiface(i8* nest undef, i8* %tmpv.8.sroa.0.sroa.0.0.copyload, i8* %tmpv.8.sroa.0.sroa.2.0.copyload)
+  call void @runtime.printiface(i8* nest undef, i8* %tmpv.6.sroa.0.sroa.0.0.copyload, i8* %tmpv.6.sroa.0.sroa.2.0.copyload)
   call void @runtime.printnl(i8* nest undef)
   call void @runtime.printunlock(i8* nest undef)
   br label fallthrough.2
 
 fallthrough.2:                                    
-  call void @runtime.ifaceI2E2({ { %_type.0*, i8* }, i8 }* nonnull sret({ { %_type.0*, i8* }, i8 }) "go_sret" %sret.actual.2, i8* nest undef, i8* bitcast ({ %_type.0*, void (i8*, %functionDescriptor.0*)* }* @imt..interface_4String_bfunc_8_9_8_9_5..main.S to i8*), i8* nonnull %cast.42)
-  %tmpv.11.sroa.2.0.cast.71.sroa_idx = getelementptr inbounds { { %_type.0*, i8* }, i8 }, { { %_type.0*, i8* }, i8 }* %sret.actual.2, i64 0, i32 1
-  %tmpv.11.sroa.2.0.copyload = load i8, i8* %tmpv.11.sroa.2.0.cast.71.sroa_idx, align 8
-  %4 = and i8 %tmpv.11.sroa.2.0.copyload, 1
+  call void @runtime.ifaceI2E2({ { %_type.0*, i8* }, i8 }* nonnull sret({ { %_type.0*, i8* }, i8 }) "go_sret" %sret.actual.2, i8* nest undef, i8* bitcast ({ %_type.0*, void (i8*, %functionDescriptor.0*)* }* @imt..interface_4String_bfunc_8_9_8_9_5..main.S to i8*), i8* nonnull %call.1)
+  %tmpv.9.sroa.2.0.cast.73.sroa_idx = getelementptr inbounds { { %_type.0*, i8* }, i8 }, { { %_type.0*, i8* }, i8 }* %sret.actual.2, i64 0, i32 1
+  %tmpv.9.sroa.2.0.copyload = load i8, i8* %tmpv.9.sroa.2.0.cast.73.sroa_idx, align 8
+  %4 = and i8 %tmpv.9.sroa.2.0.copyload, 1
   %trunc.3.not = icmp eq i8 %4, 0
   br i1 %trunc.3.not, label fallthrough.3, label then.3
 
 then.3:                                           
-  %tmpv.11.sroa.0.sroa.2.0.tmpv.11.sroa.0.0.cast.71.sroa_cast.sroa_idx24 = getelementptr inbounds { { %_type.0*, i8* }, i8 }, { { %_type.0*, i8* }, i8 }* %sret.actual.2, i64 0, i32 0, i32 1
-  %tmpv.11.sroa.0.sroa.2.0.copyload = load i8*, i8** %tmpv.11.sroa.0.sroa.2.0.tmpv.11.sroa.0.0.cast.71.sroa_cast.sroa_idx24, align 8
-  %tmpv.11.sroa.0.sroa.0.0.tmpv.11.sroa.0.0.cast.71.sroa_cast.sroa_cast = bitcast { { %_type.0*, i8* }, i8 }* %sret.actual.2 to i8**
-  %tmpv.11.sroa.0.sroa.0.0.copyload = load i8*, i8** %tmpv.11.sroa.0.sroa.0.0.tmpv.11.sroa.0.0.cast.71.sroa_cast.sroa_cast, align 8
+  %tmpv.9.sroa.0.sroa.2.0.tmpv.9.sroa.0.0.cast.73.sroa_cast.sroa_idx24 = getelementptr inbounds { { %_type.0*, i8* }, i8 }, { { %_type.0*, i8* }, i8 }* %sret.actual.2, i64 0, i32 0, i32 1
+  %tmpv.9.sroa.0.sroa.2.0.copyload = load i8*, i8** %tmpv.9.sroa.0.sroa.2.0.tmpv.9.sroa.0.0.cast.73.sroa_cast.sroa_idx24, align 8
+  %tmpv.9.sroa.0.sroa.0.0.tmpv.9.sroa.0.0.cast.73.sroa_cast.sroa_cast = bitcast { { %_type.0*, i8* }, i8 }* %sret.actual.2 to i8**
+  %tmpv.9.sroa.0.sroa.0.0.copyload = load i8*, i8** %tmpv.9.sroa.0.sroa.0.0.tmpv.9.sroa.0.0.cast.73.sroa_cast.sroa_cast, align 8
   call void @runtime.printlock(i8* nest undef)
-  call void @runtime.printeface(i8* nest undef, i8* %tmpv.11.sroa.0.sroa.0.0.copyload, i8* %tmpv.11.sroa.0.sroa.2.0.copyload)
+  call void @runtime.printeface(i8* nest undef, i8* %tmpv.9.sroa.0.sroa.0.0.copyload, i8* %tmpv.9.sroa.0.sroa.2.0.copyload)
   call void @runtime.printnl(i8* nest undef)
   call void @runtime.printunlock(i8* nest undef)
   br label fallthrough.3
 
 fallthrough.3:                                    
-  call void @runtime.ifaceI2I2({ %.1, i8 }* nonnull sret({ %.1, i8 }) "go_sret" %sret.actual.3, i8* nest undef, %_type.0* getelementptr inbounds (%InterfaceType.0, %InterfaceType.0* @main.I..d, i64 0, i32 0), i8* bitcast ({ %_type.0*, void (i8*, %functionDescriptor.0*)* }* @imt..interface_4String_bfunc_8_9_8_9_5..main.S to i8*), i8* nonnull %cast.42)
-  %tmpv.14.sroa.2.0.cast.82.sroa_idx = getelementptr inbounds { %.1, i8 }, { %.1, i8 }* %sret.actual.3, i64 0, i32 1
-  %tmpv.14.sroa.2.0.copyload = load i8, i8* %tmpv.14.sroa.2.0.cast.82.sroa_idx, align 8
-  %5 = and i8 %tmpv.14.sroa.2.0.copyload, 1
+  call void @runtime.ifaceI2I2({ %.1, i8 }* nonnull sret({ %.1, i8 }) "go_sret" %sret.actual.3, i8* nest undef, %_type.0* getelementptr inbounds (%InterfaceType.0, %InterfaceType.0* @main.I..d, i64 0, i32 0), i8* bitcast ({ %_type.0*, void (i8*, %functionDescriptor.0*)* }* @imt..interface_4String_bfunc_8_9_8_9_5..main.S to i8*), i8* nonnull %call.1)
+  %tmpv.12.sroa.2.0.cast.84.sroa_idx = getelementptr inbounds { %.1, i8 }, { %.1, i8 }* %sret.actual.3, i64 0, i32 1
+  %tmpv.12.sroa.2.0.copyload = load i8, i8* %tmpv.12.sroa.2.0.cast.84.sroa_idx, align 8
+  %5 = and i8 %tmpv.12.sroa.2.0.copyload, 1
   %trunc.4.not = icmp eq i8 %5, 0
   br i1 %trunc.4.not, label fallthrough.4, label then.4
 
 then.4:                                           
-  %tmpv.14.sroa.0.sroa.2.0.tmpv.14.sroa.0.0.cast.82.sroa_cast.sroa_idx17 = getelementptr inbounds { %.1, i8 }, { %.1, i8 }* %sret.actual.3, i64 0, i32 0, i32 1
-  %tmpv.14.sroa.0.sroa.2.0.copyload = load i8*, i8** %tmpv.14.sroa.0.sroa.2.0.tmpv.14.sroa.0.0.cast.82.sroa_cast.sroa_idx17, align 8
-  %tmpv.14.sroa.0.sroa.0.0.tmpv.14.sroa.0.0.cast.82.sroa_cast.sroa_cast = bitcast { %.1, i8 }* %sret.actual.3 to i8**
-  %tmpv.14.sroa.0.sroa.0.0.copyload = load i8*, i8** %tmpv.14.sroa.0.sroa.0.0.tmpv.14.sroa.0.0.cast.82.sroa_cast.sroa_cast, align 8
+  %tmpv.12.sroa.0.sroa.2.0.tmpv.12.sroa.0.0.cast.84.sroa_cast.sroa_idx17 = getelementptr inbounds { %.1, i8 }, { %.1, i8 }* %sret.actual.3, i64 0, i32 0, i32 1
+  %tmpv.12.sroa.0.sroa.2.0.copyload = load i8*, i8** %tmpv.12.sroa.0.sroa.2.0.tmpv.12.sroa.0.0.cast.84.sroa_cast.sroa_idx17, align 8
+  %tmpv.12.sroa.0.sroa.0.0.tmpv.12.sroa.0.0.cast.84.sroa_cast.sroa_cast = bitcast { %.1, i8 }* %sret.actual.3 to i8**
+  %tmpv.12.sroa.0.sroa.0.0.copyload = load i8*, i8** %tmpv.12.sroa.0.sroa.0.0.tmpv.12.sroa.0.0.cast.84.sroa_cast.sroa_cast, align 8
   call void @runtime.printlock(i8* nest undef)
-  call void @runtime.printiface(i8* nest undef, i8* %tmpv.14.sroa.0.sroa.0.0.copyload, i8* %tmpv.14.sroa.0.sroa.2.0.copyload)
+  call void @runtime.printiface(i8* nest undef, i8* %tmpv.12.sroa.0.sroa.0.0.copyload, i8* %tmpv.12.sroa.0.sroa.2.0.copyload)
   call void @runtime.printnl(i8* nest undef)
   call void @runtime.printunlock(i8* nest undef)
   br label fallthrough.4
 
 fallthrough.4:                                    
-  %cast.90 = bitcast %functionDescriptor.0* %tmpv.17 to i8*
-  %6 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %tmpv.17, i64 0, i32 0
+  %call.2 = call i8* @runtime.newobject(i8* nest undef, %_type.0* getelementptr inbounds (%StructType.0, %StructType.0* @main.S..d, i64 0, i32 0))
+  %6 = bitcast i8* %call.2 to i64*
   store i64 0, i64* %6, align 8
-  %call.0 = call { i8*, i8 } @runtime.ifaceE2T2P(i8* nest undef, %_type.0* getelementptr inbounds (%PtrType.0, %PtrType.0* @main.S..p, i64 0, i32 0), i8* bitcast (%PtrType.0* @main.S..p to i8*), i8* nonnull %cast.90)
-  %call.0.fca.1.extract = extractvalue { i8*, i8 } %call.0, 1
-  %7 = and i8 %call.0.fca.1.extract, 1
+  %call.3 = call { i8*, i8 } @runtime.ifaceE2T2P(i8* nest undef, %_type.0* getelementptr inbounds (%PtrType.0, %PtrType.0* @main.S..p, i64 0, i32 0), i8* bitcast (%PtrType.0* @main.S..p to i8*), i8* nonnull %call.2)
+  %call.3.fca.1.extract = extractvalue { i8*, i8 } %call.3, 1
+  %7 = and i8 %call.3.fca.1.extract, 1
   %trunc.5.not = icmp eq i8 %7, 0
   br i1 %trunc.5.not, label fallthrough.5, label then.5
 
 then.5:                                           
-  %call.0.fca.0.extract = extractvalue { i8*, i8 } %call.0, 0
+  %call.3.fca.0.extract = extractvalue { i8*, i8 } %call.3, 0
   call void @runtime.printlock(i8* nest undef)
-  call void @runtime.printpointer(i8* nest undef, i8* %call.0.fca.0.extract)
+  call void @runtime.printpointer(i8* nest undef, i8* %call.3.fca.0.extract)
   call void @runtime.printnl(i8* nest undef)
   call void @runtime.printunlock(i8* nest undef)
   br label fallthrough.5
 
 fallthrough.5:                                    
-  %cast.102 = bitcast %functionDescriptor.0* %tmpv.22 to i8*
-  %8 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %tmpv.22, i64 0, i32 0
+  %call.4 = call i8* @runtime.newobject(i8* nest undef, %_type.0* getelementptr inbounds (%StructType.0, %StructType.0* @main.S..d, i64 0, i32 0))
+  %8 = bitcast i8* %call.4 to i64*
   store i64 0, i64* %8, align 8
-  %call.1 = call { i8*, i8 } @runtime.ifaceI2T2P(i8* nest undef, %_type.0* getelementptr inbounds (%PtrType.0, %PtrType.0* @main.S..p, i64 0, i32 0), i8* bitcast ({ %_type.0*, void (i8*, %functionDescriptor.0*)* }* @pimt..interface_4String_bfunc_8_9_8_9_5..main.S to i8*), i8* nonnull %cast.102)
-  %call.1.fca.1.extract = extractvalue { i8*, i8 } %call.1, 1
-  %9 = and i8 %call.1.fca.1.extract, 1
+  %call.5 = call { i8*, i8 } @runtime.ifaceI2T2P(i8* nest undef, %_type.0* getelementptr inbounds (%PtrType.0, %PtrType.0* @main.S..p, i64 0, i32 0), i8* bitcast ({ %_type.0*, void (i8*, %functionDescriptor.0*)* }* @pimt..interface_4String_bfunc_8_9_8_9_5..main.S to i8*), i8* nonnull %call.4)
+  %call.5.fca.1.extract = extractvalue { i8*, i8 } %call.5, 1
+  %9 = and i8 %call.5.fca.1.extract, 1
   %trunc.6.not = icmp eq i8 %9, 0
   br i1 %trunc.6.not, label fallthrough.6, label then.6
 
 then.6:                                           
-  %call.1.fca.0.extract = extractvalue { i8*, i8 } %call.1, 0
+  %call.5.fca.0.extract = extractvalue { i8*, i8 } %call.5, 0
   call void @runtime.printlock(i8* nest undef)
-  call void @runtime.printpointer(i8* nest undef, i8* %call.1.fca.0.extract)
+  call void @runtime.printpointer(i8* nest undef, i8* %call.5.fca.0.extract)
   call void @runtime.printnl(i8* nest undef)
   call void @runtime.printunlock(i8* nest undef)
   br label fallthrough.6
@@ -340,6 +336,8 @@ then.6:
 fallthrough.6:                                    
   ret void
 }
+
+declare noalias nonnull i8* @runtime.newobject(i8*, %_type.0*) local_unnamed_addr #0
 
 declare void @runtime.ifaceE2E2({ { %_type.0*, i8* }, i8 }*, i8*, i8*, i8*) local_unnamed_addr #0
 

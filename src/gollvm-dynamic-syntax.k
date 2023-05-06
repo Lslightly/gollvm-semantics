@@ -42,6 +42,7 @@ module LLVM-TYPE-DYNAMIC-SYNTAX
                 //  offsetOfField(StructType, FieldNumber)
                 //  offset size from the beginning of the struct to the field number of struct
                 |   offsetOfField(StructType, Int) [function]
+                |   offsetOfFieldIdxList(Type, List) [function]
     syntax Type ::= trimPtrType(Type) [function]
                 |   subType(Type, List) [function]
                 |   subTypeList(TypeList, List) [function]
@@ -125,7 +126,7 @@ module LLVM-TYPE-DYNAMIC
     =>
         {readObjAtGlobalVWithIdxList(TD, 0, .Ints)}:>Int
     rule [TSizeOfTypeV]:
-        SizeOfType(TypeV:LocalName) => SizeOfType(realType (TypeV))
+        SizeOfType(TypeV:LocalName) => SizeOfType(realType(TypeV))
 
     rule SizeOfTypeList (T:Type, Ts:TypeList) => SizeOfType(T) +Int SizeOfTypeList (Ts)
     rule SizeOfTypeList(.TypeList) => 0
@@ -137,8 +138,17 @@ module LLVM-TYPE-DYNAMIC
     
     rule [ToffsetOfFieldZero]:
         offsetOfField (_, 0) => 0
+    
+    rule [ToffsetOfFieldIdxList]:
+        offsetOfFieldIdxList(T:StructType, ListItem(I:Int) Remains:List)
+    =>
+        offsetOfField(T, I) +Int offsetOfFieldIdxList(subType(T, ListItem(I)), Remains)
+    rule [ToffsetOfFieldIdxListOne]:
+        offsetOfFieldIdxList(_:Type, .List)
+    =>
+        0
 
-    rule subType(T:Type, .List) => T [priority(49)]
+    rule subType(T:Type, .List) => realType(T) [priority(49)]
     rule subType([_ x T], ListItem(_) L:List) => subType(T, L)
     rule subType(<_ x T>, ListItem(_) L:List) => subType(T, L)
     rule subType({ TyList }, L:List) => subTypeList(TyList, L)
@@ -231,14 +241,14 @@ module LLVM-TYPE-DYNAMIC
     rule implement(_:ValueRef, _:ValueRef) => true
 
     rule getTDFromTabConst(Tab:GlobalName) => {readObjAtGlobalVWithIdxList(Tab, 0, .Ints)}:>ValueRef
-    rule getTDFromTab(Tab:GlobalName) => getTDFromTabConst(extractGlobalName(Tab))
+    rule getTDFromTab(Tab:ValueRef) => getTDFromTabConst(extractGlobalName(Tab))
 
 endmodule
 
 module TYPE-DEFINES
     imports GOLLVM-SYNTAX
     imports GOLLVM-CONFIGURATION
-    syntax Type ::= realType(LocalName) [function]
+    syntax Type ::= realType(Type) [function]
     rule [TrealType]:
     [[
         realType(TypeV:LocalName)
@@ -246,6 +256,7 @@ module TYPE-DEFINES
         {MAP[TypeV]}:>Type
     ]]
     <typedefs> MAP </typedefs>
+    rule realType(V:Type) => V [owise]
 endmodule
 
 /*

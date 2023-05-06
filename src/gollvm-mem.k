@@ -58,7 +58,9 @@ module GOLLVM-MEM-SYNTAX
                     |   addressValOfWrapper(LocalName) [seqstrict]
                     |   deref(LocalName) [function]
                     |   toAddress(KItem) [seqstrict]
+                    //  获得当前新地址Base
                     |   currNewAddr() [function]
+                    //  获得当前新地址Address并将nextId+1
                     |   useNewAddr()
     syntax KItem ::= addressValOfWrapper(LocalName) [seqstrict]
     //  base address + index list

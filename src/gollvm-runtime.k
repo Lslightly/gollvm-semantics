@@ -152,6 +152,7 @@ module RUNTIME-PREPROCESS
     rule <k>
         VoidGlobalCall (@runtime.ifaceE2E2,
                         _:Type _:ParamAttrs RetPtr:LocalName, // retptr
+                        _:ParamFactor,  //  undef
                         _:Type _:ParamAttrs FromTD:ValueRef, // "from" type descriptor
                         _:Type _:ParamAttrs FromData:LocalName // "from" data
         )
@@ -161,6 +162,7 @@ module RUNTIME-PREPROCESS
     rule <k>
         VoidGlobalCall (@runtime.ifaceE2I2,
                         _:Type _:ParamAttrs RetPtr:LocalName, // retptr
+                        _:ParamFactor,  //  undef
                         _:Type _:ParamAttrs ToInterType:ValueRef, // "to" interfacetype
                         _:Type _:ParamAttrs FromTD:ValueRef, // "from" type descriptor
                         _:Type _:ParamAttrs FromData:LocalName // "from" data
@@ -171,6 +173,7 @@ module RUNTIME-PREPROCESS
     rule <k>
         VoidGlobalCall (@runtime.ifaceI2E2,
                         _:Type _:ParamAttrs RetPtr:LocalName, // retptr
+                        _:ParamFactor,  //  undef
                         _:Type _:ParamAttrs FromTab:ValueRef, // "from" interfacetype
                         _:Type _:ParamAttrs FromData:LocalName // "from" data
         )
@@ -180,6 +183,7 @@ module RUNTIME-PREPROCESS
     rule <k>
         VoidGlobalCall (@runtime.ifaceI2I2,
                         _:Type _:ParamAttrs RetPtr:LocalName, // retptr
+                        _:ParamFactor,  //  undef
                         _:Type _:ParamAttrs ToInterType:ValueRef, // "to" interfacetype
                         _:Type _:ParamAttrs FromTab:ValueRef, // "from" interfacetype
                         _:Type _:ParamAttrs FromData:LocalName // "from" data
@@ -350,5 +354,10 @@ module GOLLVM-RUNTIME
     ~>  updateObjListAtLocalV(RetPtr, 1, true)
     ... </k>
         requires implement(ToInterType, getTDFromTab(FromTab))
+    
+    //  TODO ifaceE2T2P在栈上分配返回值
+    rule [TifaceE2T2P]: <k>
+    
+    </k>
 
 endmodule

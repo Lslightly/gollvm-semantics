@@ -89,16 +89,14 @@ module GOLLVM-DYN-INSTS
 
     rule [TsizeOfGepIdxListStruct]:
         sizeOfGepIdxList(
-            StructT:Type,
+            StructT:StructType,
             _:OptInRange _:Type StructOffset:ValueRef,
-            _:OptInRange _:Type FieldOffset:ValueRef,
             Remains:ReturnedValGep
         )
     =>
         castIntPrim(StructOffset) *Int SizeOfType(StructT)
-            +Int offsetOfField({StructT}:>StructType, castIntPrim (FieldOffset))
-            +Int sizeOfGepIdxList(subType(StructT, ListItem(castIntPrim(FieldOffset))), Remains)
-    requires toIntCastable(StructOffset) andThenBool toIntCastable(FieldOffset) andThenBool isStructTypeSort(StructT)
+            +Int offsetOfFieldIdxList(StructT, getGepIdxList(Remains))
+    requires toIntCastable(StructOffset)
     [priority(50)]
 
     rule [TsizeOfGepIdxList]: sizeOfGepIdxList(T:Type, _:OptInRange _:Type V:ValueRef , .ReturnedValGep)
