@@ -6,6 +6,7 @@ requires "gollvm-configuration.k"
 requires "constant.k"
 module GOLLVM-SYNTAX-HELPER-SYNTAX
     imports GOLLVM-SYNTAX
+    imports LIST
 
 // extract GlobalName from ValueRef
     syntax GlobalName ::= extractGlobalName(ValueRef) [function]
@@ -13,7 +14,9 @@ module GOLLVM-SYNTAX-HELPER-SYNTAX
 // judge whether is the specified format of code
     syntax Bool ::= isGepConst(ValueRef) [function]
                 |   isBitcastConst(ValueRef) [function]
-    
+
+    syntax List ::= getConstIdxList(ConstantIndexList) [function]
+
 endmodule
 
 module GOLLVM-SYNTAX-HELPER
@@ -37,4 +40,7 @@ module GOLLVM-SYNTAX-HELPER
     rule isGepConst (getelementptr _:OptInBounds(_:Type, _:Type GV:GlobalName, _:ReturnedVal)) => true requires isConst(GV)
     rule isBitcastConst(_:ValueRef) => false [owise]
     rule isBitcastConst(bitcast (_:Type GV:GlobalName to _:Type)) => true requires isConst(GV)
+
+    rule getConstIdxList(, I:Int) => ListItem(I) .List
+    rule getConstIdxList(, I:Int L:ConstantIndexList) => ListItem(I) getConstIdxList(L)
 endmodule

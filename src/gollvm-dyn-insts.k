@@ -350,6 +350,25 @@ module GOLLVM-NORMAL-INSTS
             addrMapInsert(Dst, #if {castPrim(Cond)}:>Bool #then addressValOf(TrueV) #else addressValOf(FalseV) #fi)
         ... </k>
         requires toPrimCastable(Cond) andThenBool isAddr(TrueV) andThenBool isAddr(FalseV)
+
+    rule [TextractvalueAddr]:
+        <k>
+            execInst(Dst:LocalName = extractvalue _:StructType Src:LocalName IdxList:ConstantIndexList _:InstructionMetadatas)
+        =>
+            addrMapInsert(Dst, toAddress(getContentElemMultiDim({lookUpPrim(Src)}:>List, getConstIdxList(IdxList))))
+        ... </k>
+        requires notBool isNonAddrSort(getContentElemMultiDim({lookUpPrim(Src)}:>List, getConstIdxList(IdxList)))
+    rule [TextractvalueNonAddr]: <k>
+        execInst(Dst:LocalName = extractvalue _:StructType Src:LocalName IdxList:ConstantIndexList _:InstructionMetadatas)
+    =>
+        updatePrim(
+            Dst,
+            trimWrapperNonAddr(
+                getContentElemMultiDim({lookUpPrim(Src)}:>List, getConstIdxList(IdxList))
+            )
+        )
+    ... </k>
+        requires isNonAddrSort(getContentElemMultiDim({lookUpPrim(Src)}:>List, getConstIdxList(IdxList)))
     
 endmodule
 

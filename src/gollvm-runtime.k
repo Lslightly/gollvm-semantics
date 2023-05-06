@@ -37,10 +37,10 @@ module GOLLVM-RUNTIME-SYNTAX
                     |ifaceI2E2(LocalName, ValueRef, LocalName)
                     //  ifaceI2I2(RetPtr, ToInterType, FromTab, FromData)
                     |ifaceI2I2(LocalName, ValueRef, ValueRef, LocalName)
-                    //  ifaceE2T2p(RetStruct, ToTD, FromTD, FromData)
-                    |ifaceE2T2p(LocalName, ValueRef, ValueRef, LocalName)
-                    //  ifaceI2T2p(RetStruct, ToTD, FromTab, FromData)
-                    |ifaceI2T2p(LocalName, ValueRef, ValueRef, LocalName)
+                    //  ifaceE2T2P(RetStruct, ToTD, FromTD, FromData)
+                    |ifaceE2T2P(LocalName, ValueRef, ValueRef, LocalName)
+                    //  ifaceI2T2P(RetStruct, ToTD, FromTab, FromData)
+                    |ifaceI2T2P(LocalName, ValueRef, ValueRef, LocalName)
 endmodule
 
 /*
@@ -192,24 +192,24 @@ module RUNTIME-PREPROCESS
         ifaceI2I2(RetPtr, ToInterType, FromTab, FromData)
     ... </k>
     rule <k>
-        NonVoidGlobalCall (RetStruct:LocalName, _:Type, @runtime.ifaceE2T2p,
+        NonVoidGlobalCall (RetStruct:LocalName, _:Type, @runtime.ifaceE2T2P,
                         _:ParamFactor,  //  undef
                         _:Type _:ParamAttrs ToTD:ValueRef, // "to" type descriptor
                         _:Type _:ParamAttrs FromTD:ValueRef, // "from" type descriptor
                         _:Type _:ParamAttrs FromData:LocalName // "from" data
         )
     =>
-        ifaceE2T2p (RetStruct, ToTD, FromTD, FromData)
+        ifaceE2T2P (RetStruct, ToTD, FromTD, FromData)
     ... </k>
     rule <k>
-        NonVoidGlobalCall (RetStruct:LocalName, _:Type, @runtime.ifaceI2T2p,
+        NonVoidGlobalCall (RetStruct:LocalName, _:Type, @runtime.ifaceI2T2P,
                         _:ParamFactor,  //  undef
                         _:Type _:ParamAttrs ToTD:ValueRef, // "to" type descriptor
                         _:Type _:ParamAttrs FromTab:ValueRef, // "from" interfacetype
                         _:Type _:ParamAttrs FromData:LocalName // "from" data
         )
     =>
-        ifaceI2T2p (RetStruct, ToTD, FromTab, FromData)
+        ifaceI2T2P (RetStruct, ToTD, FromTab, FromData)
     ... </k>
 
 endmodule
@@ -357,7 +357,15 @@ module GOLLVM-RUNTIME
     
     //  TODO ifaceE2T2P在栈上分配返回值
     rule [TifaceE2T2P]: <k>
-    
-    </k>
+        ifaceE2T2P(RetStruct:LocalName, ToTD:ValueRef, FromTD:ValueRef, FromData:LocalName)
+    =>
+        updatePrim(RetStruct, ListItem(baseOffsetOf(FromData)) ListItem(true))
+    ... </k> requires eqtype(ToTD, FromTD)
+
+    rule [TifaceI2T2P]: <k>
+        ifaceI2T2P (RetStruct:LocalName, ToTD:ValueRef, FromTab:ValueRef, FromData:LocalName)
+    =>
+        updatePrim(RetStruct, ListItem(baseOffsetOf(FromData)) ListItem(true))
+    ... </k> requires eqtype(ToTD, getTDFromTab(FromTab))
 
 endmodule
