@@ -75,16 +75,16 @@ module RUNTIME-PREPROCESS
     VoidGlobalCall (@llvm.memcpy.p0i8.p0i8.i64, _:Type _:ParamAttrs DstPtr:LocalName , _:Type _:ParamAttrs SrcPtr:LocalName, _:Type _:ParamAttrs Size:Int, _:ParamFactor) => memcpy(DstPtr, SrcPtr, Size) ...
     </k>
     // TODO copy const
-    // rule <k>
-    //     VoidGlobalCall(@llvm.memcpy.p0i8.p0i8.i64,
-    //         _:Type _:ParamAttrs DstPtr:LocalName,
-    //         _:Type _:ParamAttrs SrcPtr:ValueRef,
-    //         _:Type _:ParamAttrs Size:Int, _:ParamFactor
-    //     )
-    // =>
-        
-    // ... </k>
-    // requires isGepConst(SrcPtr) orBool
+    rule <k>
+        VoidGlobalCall(@llvm.memcpy.p0i8.p0i8.i64,
+            _:Type _:ParamAttrs DstPtr:LocalName,
+            _:Type _:ParamAttrs SrcPtr:ValueRef,
+            _:Type _:ParamAttrs Size:Int, _:ParamFactor
+        )
+    =>
+        memcpy (DstPtr, extractGlobalName(SrcPtr), Size)
+    ... </k>
+    requires isGepConst(SrcPtr) orBool isBitcastConst(SrcPtr)
 
     rule <k>
     VoidGlobalCall (@runtime.growslice,
@@ -251,6 +251,11 @@ module GOLLVM-RUNTIME
     =>
         copy({addressValOf(DstPtr)}:>BaseOffset, {addressValOf(SrcPtr)}:>BaseOffset, Size)
     ... </k>
+    rule [TmemcpyGV]: <k>
+        memcpy(DstPtr:LocalName, SrcPtr:GlobalName, Size:Int)
+    =>
+        copy({addressValOf(DstPtr)}:>BaseOffset, {addressValOfGlobalV(SrcPtr)}:>BaseOffset, Size)
+    ... </k>
 
     //  TODO growslice这里的Content没有实际进行增长
     rule [Tgrowslice]: <k>
@@ -317,7 +322,7 @@ module GOLLVM-RUNTIME
     ~>  updateObjListAtLocalV(RetPtr, 0, 1, .Ints, baseOffsetOf(FromData))
     ~>  updateObjListAtLocalV(RetPtr, 1, true)
     ... </k>
-    requires nonNil(FromTD)
+    requires notBool isNil(FromTD)
 
     rule [TifaceE2I2]: <k>
         ifaceE2I2(RetPtr:LocalName, ToInterType:ValueRef, FromTD:ValueRef, FromData:LocalName)
@@ -335,7 +340,7 @@ module GOLLVM-RUNTIME
     ~>  updateObjListAtLocalV(RetPtr, 0, 1, .Ints, baseOffsetOf(FromData))
     ~>  updateObjListAtLocalV(RetPtr, 1, true)
     ... </k>
-        requires nonNil(FromTab)
+        requires notBool isNil(FromTab)
     
     rule [TifaceI2I2]: <k>
         ifaceI2I2 (RetPtr:LocalName, ToInterType:ValueRef, FromTab:ValueRef, FromData:LocalName)

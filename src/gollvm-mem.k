@@ -21,7 +21,7 @@ module NON-ADDR-SYNTAX
 
     //  nonAddr for primitive type
     syntax Bool ::= isNonAddrSort(KItem) [function]
-    syntax NonAddr ::= nonAddr(KItem) | GlobalReg
+    syntax NonAddr ::= nonAddr(KItem)
     syntax KItem ::= NonAddr
     syntax KResult ::= NonAddr
     //  nonAddr(V) -> V
@@ -54,6 +54,7 @@ module GOLLVM-MEM-SYNTAX
     syntax Address ::=  BaseOffset
                     |   BaseMapIdx
                     |   addressValOf(LocalName) [function]
+                    |   addressValOfGlobalV(GlobalName) [function]
                     |   addressValOfWrapper(LocalName) [seqstrict]
                     |   deref(LocalName) [function]
                     |   toAddress(KItem) [seqstrict]
@@ -63,6 +64,7 @@ module GOLLVM-MEM-SYNTAX
     //  base address + index list
     //  empty list mean pure address with no offset, which represents the whole object
     syntax BaseOffset ::=   baseOffset(Int, List)
+                        |   "nil"
                         |   pureAddr(Int) [function]
                         |   baseOffsetOf(LocalName) [function]
                         |   baseOffsetOfWrapper(LocalName)
@@ -100,7 +102,9 @@ module GOLLVM-MEM-SYNTAX
 
     //  addrAlias(dst, src) used to addrAlias dst with src
     syntax KItem ::= addrAlias(LocalName, LocalName)
+                    //  局部寄存器添加地址
                 |   addrMapInsert(LocalName, Address) [seqstrict]
+                |   globalAddrMapInsert(GlobalName, Address) [seqstrict]
     //  store(dst, dstType, srcv)
     //  store the address of srcv to dst's address according to dstType
     syntax KItem ::= storeAddress(LocalName, Type, LocalName)
@@ -110,7 +114,7 @@ module GOLLVM-MEM-SYNTAX
     syntax Bool ::= isAddr(LocalName) [function]
                 |   isBaseOffsetSort(Address) [function]
                 |   isPrim(LocalName) [function]
-                |   nonNil(ValueRef) [function]
+                |   isNil(ValueRef) [function]
 
     //  lookup %local in local2prim and return the value
     syntax KItem ::= lookUpPrim(LocalName) [function]
@@ -140,6 +144,11 @@ module GOLLVM-MEM
         <local2Base>
             ... L |-> Addr ...
         </local2Base> requires isAddr(L)
+    
+    rule [[ addressValOfGlobalV (GV:GlobalName) => Addr ]]
+        <globalRegisters>
+            ... GV |-> Addr ...
+        </globalRegisters>
     
     rule <k> addressValOfWrapper(L) => addressValOf(L) ...</k>
 
@@ -181,6 +190,14 @@ module GOLLVM-MEM
         <local2Base>
             MAP => MAP [Dst <- Addr]
         </local2Base>
+    rule [TglobalAddrMapInsert]: <k>
+        globalAddrMapInsert (Dst:GlobalName, Addr:Address)
+    =>
+        .
+    ... </k>
+        <globalRegisters>
+            MAP => MAP [Dst <- Addr]
+        </globalRegisters>
     
 
     rule [TvalidStoreAddress]:<k>
@@ -219,8 +236,9 @@ module GOLLVM-MEM
             Local2Prim
         </local2prim>
 
-    rule nonNil(null) => false
-    rule nonNil(_:ValueRef) => true [owise]
+    rule isNil(null) => true
+    rule isNil(_:ValueRef) => false [owise]
+    rule isNil(L:LocalName) => baseOffsetOf(L) ==K nil
 
     rule isBaseOffsetSort(_:BaseOffset) => true
     rule isBaseOffsetSort(_:Address) => false [owise]

@@ -17,7 +17,7 @@ module GOLLVM-SYNTAX-HELPER-SYNTAX
 endmodule
 
 module GOLLVM-SYNTAX-HELPER
-    imports CONSTANT
+    imports CONSTANT-SYNTAX
     imports GOLLVM-SYNTAX-HELPER-SYNTAX
 
     rule [TextractGlobalNameGep]:

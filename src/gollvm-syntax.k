@@ -935,6 +935,7 @@ module GOLLVM-SYNTAX
                            | MetadataValueString
                            | "!" "(" IndexList ")"
                            | "!" "{" MetadataValues "}"
+    syntax KResult ::= ConstValueRef
     //define the values that appear in a metadata list
     syntax MetadataValueInt ::= "!" Int [klabel(#metaValueInVarForm)]
     syntax MetadataValueString ::= "!" String

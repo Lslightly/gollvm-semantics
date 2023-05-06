@@ -1,6 +1,8 @@
 requires "gollvm-syntax.k"
 requires "gollvm-configuration.k"
 requires "constant.k"
+requires "gollvm-mem.k"
+requires "gollvm-object.k"
 
 module GOLLVM-STATIC-SYNTAX
     imports GOLLVM-SYNTAX
@@ -18,6 +20,8 @@ module GOLLVM-STATIC
     imports GOLLVM-STATIC-SYNTAX
     imports GOLLVM-SYNTAX
     imports GOLLVM-CONFIGURATION
+    imports GOLLVM-MEM-SYNTAX
+    imports OBJECT-SYNTAX
     imports CONSTANT
 
     //  type defines
@@ -36,10 +40,8 @@ module GOLLVM-STATIC
         constant T:Type C:ConstValueRef
         _:OptSectionComdatAndAlign
     =>
-        . ...</k>
-    <globalRegisters>
-        MAP => MAP [ GlobalV <- globalReg(T, newConst(C)) ]
-    </globalRegisters>
+        globalAddrMapInsert(GlobalV, allocObj(object(T, true, newConst(C), .Map, const)))
+    ...</k>
 
     //  function definition
     rule <k> define _:FunctionPrefix _:FunctionHeaderPrefix T:Type Name:GlobalName ( Params:ArgList ) _:FunctionHeaderSuffix { StartBlock:BasicBlock Blocks:BasicBlockList }

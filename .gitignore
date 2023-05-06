@@ -4,3 +4,4 @@
 log
 kore-exec.tar.gz
 kore-match-disjunction.tar.gz
+*.log

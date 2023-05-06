@@ -12,7 +12,10 @@ module OBJECT-SYNTAX
                         | MapType
                         | header(ObjectType) 
     syntax MapType ::= "map" "[" ObjectType "]" ObjectType
-    syntax Location ::= "heap" | "stack"
+    syntax Location ::= "heap" | "stack" | "const"
+    syntax Bool ::= isHeapLoc(Location) [function]
+                |   isStackLoc(Location) [function]
+                |   isConstLoc(Location) [function]
     
     //  object(TypeDescriptor, SizeConst, Content, Map[Key]AddressOf(Value), WhetherInStack)
     //  values in List/Map are lazily refreshed.
@@ -20,7 +23,7 @@ module OBJECT-SYNTAX
     //  Map is ValueRef to Address map, i.e. key/value address map
     //  `SizeConst == true` means num of elements in object is known. We should check ListOfValues. MapOfValues is .Map
     //  `SizeConst == false` means num of elements in object is not constant. We should check MapOfValues. ListOfValues is .List
-    syntax Content ::= NonAddr | Address | List | UnInit
+    syntax Content ::= NonAddr | Address | List | UnInit | ValueRef
     syntax KItem ::= Content
     syntax KResult ::= List
     syntax Object ::= object(ObjectType, Bool, Content, Map, Location)
@@ -31,6 +34,7 @@ module OBJECT-SYNTAX
                     | searchObjAtBase(Int) [function]
                     | searchObjAtAddr(Address) [function]
                     | searchObjAtLocalV(LocalName) [function]
+                    | searchObjAtGlobalV(GlobalName) [function]
                     | moveToHeap(Object) [function]
                     //  replaceType(OldObj, NewType)
                     | replaceType(Object, ObjectType) [function]
@@ -38,6 +42,8 @@ module OBJECT-SYNTAX
 // properties:
     syntax Bool ::= inHeap(Object) [function]
                 |   isSizeConst(Object) [function]
+                //  是否位置是常量
+                |   isConstObj(Object) [function]
     syntax Type ::= getObjType(Object) [function]
     syntax KResult ::= Int
     syntax KResult ::= Object
@@ -81,13 +87,16 @@ module OBJECT-SYNTAX
     syntax Content ::=  readObjList(BaseOffset) [function]
                     |   readContentAtAddr(Address) [function]
                     |   readObjAtLocalV(LocalName) [function]
+                    |   readObjAtGlobalV(GlobalName) [function]
                     /*
                         readObjAtLocalVWithIdxList(V, Idxs)
                         V's address must be baseoffset
                     */
                     |   readObjAtLocalVWithIdxList(LocalName, Ints) [function]
+                    |   readObjAtGlobalVWithIdxList(GlobalName, Ints) [function]
                     //  lazy evaluated
                     |   getContentElemMultiDim(Content, List) [function]
+    //  包装readObjAtLocalVWithIdxList函数，防止Content是KResult不进行计算
     syntax KItem ::= readObjAtLocalVWithIdxListWrapper(LocalName, Ints) [seqstrict]
 
 // update:
@@ -163,6 +172,13 @@ module OBJECT
     imports GOLLVM-MEM-SYNTAX
     imports K-EQUAL
 
+    rule isHeapLoc (heap) => true
+    rule isHeapLoc (_:Location) => false [owise]
+    rule isStackLoc (stack) => true
+    rule isStackLoc (_:Location) => false [owise]
+    rule isConstLoc (const) => true
+    rule isConstLoc (_:Location) => false [owise]
+
 // create/search:-------------------------------
     rule createObjList(ObjTy:Type, Loc) => object(ObjTy, true, initOfType(ObjTy), .Map, Loc)
     rule createObjList(ObjTy, Loc) => object(ObjTy, true, uninit, .Map, Loc) [owise]
@@ -176,6 +192,7 @@ module OBJECT
     rule searchObjAtAddr (baseOffset (Base:Int, _:List)) => searchObjAtBase (Base)
     rule searchObjAtAddr (baseMapIdx (Base:Int, _:ValueRef)) => searchObjAtBase (Base)
     rule searchObjAtLocalV (L:LocalName) => searchObjAtAddr(addressValOf(L))
+    rule searchObjAtGlobalV(GV:GlobalName) => searchObjAtAddr(addressValOfGlobalV(GV))
     rule moveToHeap (object(Ty, SizeConst, C, M, _:Location)) => object(Ty, SizeConst, C, M, heap)
     rule replaceType(object(_:ObjectType, SizeConst, C, M, Loc), NewType:ObjectType) => object(NewType, SizeConst, C, M, Loc)
 
@@ -183,6 +200,8 @@ module OBJECT
     rule inHeap(object(_:ObjectType, _:Bool, _:Content, _:Map, Loc:Location)) => Loc ==K heap
 
     rule isSizeConst(object(_:ObjectType, SizeConst:Bool, _:Content, _:Map, _:Location)) => SizeConst
+
+    rule isConstObj(object(_:ObjectType, _:Bool, _:Content, _:Map, L:Location)) => isConstLoc (L)
 
     rule getObjType(object(ObjTy:ObjectType, _:Bool, _:Content, _:Map, _:Location)) => {ObjTy}:>Type requires isTypeSort(ObjTy)
 
@@ -233,7 +252,9 @@ module OBJECT
     rule readContentAtAddr (Addr:BaseMapIdx) => readObjMap (Addr)
 
     rule [TreadObjAtLocalV]: readObjAtLocalV(L:LocalName) => readContentAtAddr(addressValOf(L))
+    rule [TreadObjAtGlobalV]: readObjAtGlobalV(GV:GlobalName) => readContentAtAddr(addressValOfGlobalV(GV))
     rule [TreadObjAtLocalVWithIdxList]: readObjAtLocalVWithIdxList(L:LocalName, Idxs:Ints) => readContentAtAddr(appendOffset({addressValOf(L)}:>BaseOffset, createIdxList(Idxs)))
+    rule [TreadObjAtGlobalVWithIdxList]: readObjAtGlobalVWithIdxList(GV:GlobalName, Idxs:Ints) => readContentAtAddr(appendOffset({addressValOfGlobalV(GV)}:>BaseOffset, createIdxList(Idxs)))
     rule [TreadObjAtLocalVWithIdxListWrapper]:
     <k>
         readObjAtLocalVWithIdxListWrapper(L:LocalName, Idxs:Ints) => readObjAtLocalVWithIdxList(L, Idxs) ...

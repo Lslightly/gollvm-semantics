@@ -123,7 +123,7 @@ module LLVM-TYPE-DYNAMIC
     rule [TSizeOfTypeTD]:
         SizeOfType(TD:GlobalName)
     =>
-        {readConst(TD, ListItem(0))}:>Int
+        {readObjAtGlobalVWithIdxList(TD, 0, .Ints)}:>Int
     rule [TSizeOfTypeV]:
         SizeOfType(TypeV:LocalName) => SizeOfType(realType (TypeV))
 
@@ -152,9 +152,9 @@ module LLVM-TYPE-DYNAMIC
     subTypeTD(
         readConstAndExtractGlobalName(  //  the I th field's typ field
             readConstAndExtractGlobalName(  //  fields' array pointer
-                TD, createIdxList(1, 0)
+                TD, 1, 0, .Ints
             ),
-            createIdxList(I, 2)
+            I, 2, .Ints
         ),
         Remains
     )
@@ -199,7 +199,7 @@ module LLVM-TYPE-DYNAMIC
     rule [TvalueTypeOfMapType]:
         valueTypeOfMapType(MapTD:GlobalName)
     =>
-        {readConst(MapTD, ListItem(2))}:>ValueRef
+        {readObjAtGlobalVWithIdxList(MapTD, 2, .Ints)}:>ValueRef
     
     rule [TvalueTypeOfMapTypeConstGepExpr]:
         valueTypeOfMapTypeConstGepExpr(V:ValueRef)
@@ -230,7 +230,7 @@ module LLVM-TYPE-DYNAMIC
     //  TODO implement
     rule implement(_:ValueRef, _:ValueRef) => true
 
-    rule getTDFromTabConst(Tab:GlobalName) => {readConst(Tab, ListItem(0))}:>ValueRef
+    rule getTDFromTabConst(Tab:GlobalName) => {readObjAtGlobalVWithIdxList(Tab, 0, .Ints)}:>ValueRef
     rule getTDFromTab(Tab:GlobalName) => getTDFromTabConst(extractGlobalName(Tab))
 
 endmodule

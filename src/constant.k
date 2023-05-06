@@ -2,38 +2,27 @@ requires "gollvm-syntax.k"
 requires "gollvm-configuration.k"
 requires "list-helper.k"
 requires "list2list.k"
+requires "gollvm-object.k"
 module CONSTANT-SYNTAX
     imports GOLLVM-SYNTAX
     imports GOLLVM-CONFIGURATION
     imports LIST2LIST-SYNTAX
     imports LIST
     syntax Bool ::= isConst(GlobalName) [function]
-    syntax GlobalReg ::= globalReg(Type, KItem)
-// read
-                        |getGlobalReg(GlobalName) [function]
 // create
     //  construct nesting Structure, if ConstValueRef is nesting.
-    syntax KItem ::= newConst(ConstValueRef) [function]
+    syntax Content ::= newConst(ConstValueRef) [function]
     //  construct nesting list by ConstValueRef
     syntax List ::= newConstList(ReturnedVal) [function]
 endmodule
 
 module CONSTANT
     imports CONSTANT-SYNTAX
+    imports OBJECT-SYNTAX
 
-    rule [[ isConst(GV:GlobalName) => GV in_keys(MAP) ]]
-    <globalRegisters> MAP </globalRegisters>
+    rule isConst(GV:GlobalName) => isConstObj(searchObjAtGlobalV(GV))
 
 // ------GlobalReg
-// read
-    rule [TgetGlobalReg]:
-    [[
-        getGlobalReg(GV:GlobalName)
-    =>
-        {MAP[GV]}:>GlobalReg
-    ]]
-    <globalRegisters> MAP </globalRegisters>
-    requires isConst(GV)
 
 //  create
 
@@ -56,40 +45,25 @@ module CONSTANT-DYNAMIC-SYNTAX
     imports LIST2LIST-SYNTAX
     imports LIST
 //  read
-    syntax Type ::= getTypeOfGlobalReg(GlobalReg) [function]
-                |   getTypeOfGlobalV(GlobalName) [function]
-    syntax KItem ::= getValOfGlobalReg(GlobalReg) [function]
-                |   getValOfGlobalV(GlobalName) [function]
-    //  read Constant with index list
-    syntax KItem ::= readConst(GlobalName, List) [function]
-    syntax GlobalName ::= readConstAndExtractGlobalName(GlobalName, List) [function]
+    syntax Type ::= getTypeOfGlobalV(GlobalName) [function]
+    syntax GlobalName ::= readConstAndExtractGlobalName(GlobalName, Ints) [function]
 // evaluate
     syntax KItem ::= evalConst(ConstValueRef) [function]
 endmodule
 
 module CONSTANT-DYNAMIC
+    imports OBJECT-SYNTAX
     imports CONSTANT-DYNAMIC-SYNTAX
     imports LIST2LIST
 //  read
-    rule [TgetTypeOfGlobalReg]:
-        getTypeOfGlobalReg(globalReg(T:Type, _:KItem)) => T
     rule [TgetTypeOfGlobalV]:
-        getTypeOfGlobalV(GV:GlobalName) => getTypeOfGlobalReg(getGlobalReg(GV))
-    rule [TgetValOfGlobalReg]:
-        getValOfGlobalReg(globalReg(_:Type, Val:KItem)) => Val
-    rule [TgetValOfGlobalV]:
-        getValOfGlobalV(GV:GlobalName) => getValOfGlobalReg(getGlobalReg(GV))
-
-    rule [TreadConst]:
-        readConst (V:GlobalName, IdxList:List)
-    =>
-        getElemMultiDim(getValOfGlobalV(V), IdxList)
+        getTypeOfGlobalV(GV:GlobalName) => {getObjType(searchObjAtGlobalV(GV))}:>Type
 
     rule [TreadConstAndExtractGlobalName]:
-        readConstAndExtractGlobalName(V:GlobalName, IdxList:List)
+        readConstAndExtractGlobalName(V:GlobalName, IdxList:Ints)
     =>
-        extractGlobalName({readConst(V, IdxList)}:>ValueRef)
+        extractGlobalName({readObjAtGlobalVWithIdxList(V, IdxList)}:>ValueRef)
 
 //  evaluate
-    rule evalConst(getelementptr _:OptInBounds(_:Type, _Type GlobalC:GlobalName, Idxs:ReturnedVal)) => readConst(GlobalC, getValsOfReturnedVal(Idxs))
+    rule evalConst(getelementptr _:OptInBounds(_:Type, _Type GlobalC:GlobalName, Idxs:ReturnedVal)) => readObjAtGlobalVWithIdxList(GlobalC, getValIntsOfReturnedVal(Idxs))
 endmodule
