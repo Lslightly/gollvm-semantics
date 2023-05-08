@@ -66,3 +66,25 @@ Constant也放入mem中
 
 
 - [ ] 需要一个cell标记当前栈使用了哪些寄存器
+
+过程间分析
+
+- [ ] 栈
+  - [X] 对象生命期映射，堆和全局变量为0，开始栈为1，调用返回会增减id。
+    - [X] Object添加lifetime属性
+      - [X] 将合适的object()替换为createObjWithSuitableLifeTime
+    - [X] 添加全局寄存器的初始化等操作
+    - [X] 添加lifetime cell表示生命期
+  - [ ] 需要记录哪些栈对象是该次栈帧分配的
+    - [X] 在分配对象时需要记录哪些基址是当前栈帧分配的，退出时需要回收。stackAllocs cell表示栈分配的对象基址集合
+      - [ ] 似乎并不需要回收，直接按照lifetime进行判断即可
+    - [X] 需要栈帧结构callStack cell记录保存调用者信息
+      - [X] 局部寄存器映射local2Base, local2prim
+      - [X] stackAllocs cell
+- 生命期处理问题
+  - [X] store时根据生命期进行处理。
+    - [X] 如果dst的生命期 < src地址生命期，则出现问题。
+    - [ ] 寻找所有包含更改引用关系意图的操作
+  - [X] ret时将也有生命期问题。
+    - 通过checkReturnLifeTime解决
+  - [ ] unsafe.Pointer和uintptr会栈地址被返回被允许。不考虑unsafe和uintptr引入的不安全性。

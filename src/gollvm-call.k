@@ -49,7 +49,35 @@ module GOLLVM-CALL
     //  未被处理的call指令当做error处理
     rule <k> VoidGlobalCall (_:GlobalName, _:ParamList) #as Call => . ...</k>
         <errors> ... .List => ListItem(error(Call, "not modeled")) </errors> [owise]
+
+    rule <k>
+        VoidGlobalCall(
+            Fn:GlobalName,
+            _:ParamList
+        ) ~> Following
+    =>
+        storeStackState() ~> shorterLifeTime()
+        ~> evalFunc(Fn) ~>
+        longerLifeTime() ~> restoreStackState()
+        ~> Following
+    </k> requires isDefineFunction(Fn)
+
     rule <k> NonVoidGlobalCall(_:LocalName, _:Type, _:GlobalName, _:ParamList) #as Call => . ...</k>
         <errors> ... .List => ListItem(error(Call, "not modeled")) </errors> [owise]
+
+    rule <k>
+        NonVoidGlobalCall(
+            Ret:LocalName, _:Type,
+            Fn:GlobalName,
+            Args:ParamList
+        ) ~> Following
+    =>
+        storeStackState() ~> mapArgsToParams(Args, getParams(Fn)) ~> shorterLifeTime()
+        ~> evalFunc(Fn) ~> 
+        longerLifeTime() ~> restoreStackState() ~> mapReturnToReceiver(Ret)
+        ~> Following
+    </k> requires isDefineFunction(Fn)
+
+
 
 endmodule

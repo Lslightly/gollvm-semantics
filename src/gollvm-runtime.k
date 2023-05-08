@@ -227,7 +227,7 @@ module GOLLVM-RUNTIME
     imports MAP
     imports K-EQUAL
     rule [Tnewobject]: <k> newobject(L:LocalName, TypeId:ObjectType) => . ...</k>
-        <mem> Mem => Mem [ Addr <- object(TypeId, true, uninit, .Map, heap) ] </mem>
+        <mem> Mem => Mem [ Addr <- createObjWithSuitableLifeTime(TypeId, true, uninit, .Map, heap) ] </mem>
         <nextId> Addr => Addr +Int 1 </nextId>
         <local2Base>
             Local2Base => Local2Base [ L <- pureAddr (Addr) ]
@@ -235,8 +235,8 @@ module GOLLVM-RUNTIME
 
     rule [Tmakemap]: <k> makemap(L, MType:MapType) => . ...</k>
         <mem>... .Map => 
-        Addr |-> object(header(MType), true, pureAddr(Addr +Int 1), .Map, heap)
-        Addr +Int 1 |-> object((MType), false, .List, .Map, heap)
+        Addr |-> createObjWithSuitableLifeTime(header(MType), true, pureAddr(Addr +Int 1), .Map, heap)
+        Addr +Int 1 |-> createObjWithSuitableLifeTime((MType), false, .List, .Map, heap)
         ...
         </mem>
         <nextId> Addr => Addr +Int 2</nextId>

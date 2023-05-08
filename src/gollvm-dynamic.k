@@ -3,6 +3,7 @@ requires "gollvm-configuration.k"
 requires "gollvm-dynamic-syntax.k"
 requires "gollvm-dyn-insts.k"
 requires "gollvm-syntax-helper.k"
+requires "gollvm-mem.k"
 
 
 /*
@@ -14,10 +15,12 @@ module GOLLVM-DYNAMIC
     imports GOLLVM-DYNAMIC-SYNTAX
     imports GOLLVM-DYN-INSTS
     imports GOLLVM-SYNTAX-HELPER
+    imports GOLLVM-MEM-SYNTAX
     imports K-EQUAL
+    imports SET
 
     //  start executing @main.main
-    rule [start]: <k> CallMain() => evalFunc(@main.main) ...</k>
+    rule [start]: <k> CallMain() => shorterLifeTime() ~> evalFunc(@main.main) ~> longerLifeTime() ...</k>
         // <function>
         //     <functionName> Fn </functionName>
         //     ...
@@ -38,7 +41,7 @@ module GOLLVM-DYNAMIC
         </control>
     
     //  loading instruction list
-    rule [instlist]: <k> evalBlock(BB) => evalInsts(InstList) ~> evalTermInst (TermInst) </k>
+    rule [instlist]: <k> evalBlock(BB) => evalInsts(InstList) ~> evalTermInst (TermInst) ... </k>
          <static>
             <function>
                 <functionName> Fn </functionName>
@@ -69,6 +72,103 @@ module GOLLVM-DYNAMIC
 
     rule [[ getLastBlock() => LastBlock ]]
         <lastBlock> LastBlock:LabelString </lastBlock>
+
+    rule [[ isDefineFunction(Fn:GlobalName) => true ]]
+        <functionName> Fn </functionName>
+    rule isDefineFunction(_:GlobalName) => false [owise]
+
+    rule [[ getParams(Fn:GlobalName) => Params ]]
+    <functionName> Fn </functionName>
+    <params> Params:ArgList </params>
+
+    rule [[ getLastFrameLocal2Base() => Local2Base ]]
+    <callStack> _:List ListItem(frame(Local2Base:Map, _:Map, _:Map)) .List</callStack>
+    rule [[ getLastFrameLocal2prim() => Local2prim ]]
+    <callStack> _:List ListItem(frame(_:Map, Local2prim:Map, _:Map)) .List </callStack>
+    rule [[ getLastFrameStackAllocs() => StackAllocs ]]
+    <callStack> _:List ListItem(frame(_:Map, _:Map, StackAllocs:Map)) .List </callStack>
+    rule inLastFrameLocal2Base(LV:LocalName) => LV in_keys(getLastFrameLocal2Base())
+    rule inLastFrameLocal2prim(LV:LocalName) => LV in_keys(getLastFrameLocal2prim())
+    rule getLastFrameBaseOffsetOf(LV:LocalName) => {getLastFrameLocal2Base() [ LV ]}:>BaseOffset requires inLastFrameLocal2Base(LV)
+    rule getLastFramePrimOf(LV:LocalName) => {getLastFrameLocal2prim() [ LV ]}:>Content requires inLastFrameLocal2prim(LV)
+
+    rule <k>
+        storeStackState() => .
+    ... </k>
+    <local2Base> AddrMap:Map => .Map </local2Base>
+    <local2prim> PrimMap:Map => .Map </local2prim>
+    <stackAllocs> StackObjBases:Map => .Map </stackAllocs>
+    <callStack> ... .List => ListItem(frame(AddrMap, PrimMap, StackObjBases))</callStack>
+
+    rule <k>
+        restoreStackState() => .
+    ... </k>
+    <local2Base> _ => AddrMap </local2Base>
+    <local2prim> _ => PrimMap </local2prim>
+    <stackAllocs> _ => StackObjBases </stackAllocs>
+    <callStack> ... ListItem(frame(AddrMap:Map, PrimMap:Map, StackObjBases:Map)) .List => .List</callStack>
+
+    rule <k>
+        shorterLifeTime() => .
+    ... </k>
+    <lifeTime> Life:Int => Life +Int 1 </lifeTime>
+    rule <k>
+        longerLifeTime() => .
+    ... </k>
+    <lifeTime> Life:Int => Life -Int 1 </lifeTime>
+
+    rule <k>
+        mapArgsToParams(
+            _:Type _:ParamAttrs V:ValueRef , Args:ParamList,
+            _:Type _:ParamAttrs Param:LocalVar , Params:ArgList)
+    =>
+        mapArgToParam(V, Param) ~> mapArgsToParams(Args, Params)
+    ... </k>
+
+    rule <k>
+        mapArgsToParams (.ParamList, .ArgList) => .
+    ... </k>
+
+    rule <k>
+        mapArgToParam(undef, Param:LocalVar)
+    =>
+        updatePrim(Param, uninit)
+    ... </k>
+    rule <k>
+        mapArgToParam(Arg:LocalName, Param:LocalVar)
+    =>
+        updatePrim(Param, getLastFramePrimOf(Arg))
+    ... </k>
+        requires inLastFrameLocal2prim(Arg)
+    rule <k>
+        mapArgToParam(Arg:LocalName, Param:LocalVar)
+    =>
+        addrMapInsert(Param, getLastFrameBaseOffsetOf(Arg))
+    ... </k>
+        requires inLastFrameLocal2Base(Arg)
+
+    rule <k>
+        storeReturnV (V:KItem) => .
+    ... </k>
+    <retValue> _ => V </retValue>
+
+    rule [[ getReturnV() => V ]]
+    <retValue> V </retValue>
+
+    rule <k>
+        mapReturnToReceiver(Ret:LocalName)
+    =>
+        updatePrim(Ret, getReturnV())
+    ... </k>
+        requires isNonAddrSort(getReturnV())
+
+    rule <k>
+        mapReturnToReceiver(Ret:LocalName)
+    =>
+        addrMapInsert(Ret, {getReturnV()}:>BaseOffset)
+    ... </k>
+        requires notBool isNonAddrSort(getReturnV())
+
 
 // type assertion
     rule isIntSort(_:Int) => true

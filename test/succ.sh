@@ -8,3 +8,14 @@ do
     krun llvmIR/$file --definition ../src/gollvm-semantics-kompiled --statistics &> llvmIR/$file.log
     # echo $file
 done
+
+echo "-----------------\
+negative"
+
+# negative
+negativeTest=(min_level/preprocessed.min_level.ll)
+
+for file in ${negativeTest[@]}
+do
+    krun negative/$file --definition ../src/gollvm-semantics-kompiled --statistics &> negative/$file.log
+done

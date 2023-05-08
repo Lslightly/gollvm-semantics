@@ -117,6 +117,7 @@ module GOLLVM-NORMAL-INSTS
     imports GOLLVM-DYN-INSTS-SYNTAX
     imports INT
     imports K-EQUAL
+    imports SET
 
     rule [Tbitcasti8]: <k> execInst(Dst:LocalName = bitcast _:Type Src:LocalName to Ty:Type _:OptAddrSpace * _:InstructionMetadatas) => addrMapInsert (Dst, largestStepOffset({addressValOf(Src)}:>BaseOffset)) ...</k> requires isi8(Ty) andThenBool isAddr(Src) [priority(51)]
 
@@ -125,7 +126,7 @@ module GOLLVM-NORMAL-INSTS
     =>
         addrMapInsert (Dst, getSizeMatchedOffset(SizeOfType(DstPointsToType), baseOffsetOf(Src))) ...
     </k> requires notBool isi8(DstPointsToType) andBool isAddr(Src)
-    
+
     rule [Ticmpeq]: <k> execInst(Dst:LocalName = icmp eq _:Type L1:ValueRef , L2:ValueRef _:InstructionMetadatas)
     =>
         updatePrim (Dst, castIntPrim(L1) ==Int castIntPrim(L2)) ... </k>
@@ -257,12 +258,13 @@ module GOLLVM-NORMAL-INSTS
             execInst(Dst:LocalName = alloca _:OptInalloca T:Type , _:Align _:OptAddrSpace _:InstructionMetadatas) => . ...
         </k>
         <mem>
-            MEM => MEM [ Addr <- object(T, true, initOfType(T), .Map, stack)]
+            MEM => MEM [ Addr <- createObjWithSuitableLifeTime(T, true, initOfType(T), .Map, stack)]
         </mem>
         <local2Base>
             Local2Base => Local2Base [ Dst <- pureAddr(Addr) ]
         </local2Base>
-        <nextId> Addr => Addr +Int 1</nextId>
+        <nextId> Addr => Addr +Int 1 </nextId>
+        <stackAllocs> MAP => MAP [ Addr <- true ] </stackAllocs>
     
     rule [Tgep]:
         <k>
@@ -389,7 +391,26 @@ module GOLLVM-TERM-INSTS
     imports DYN-INSTS-INCLUDE
     rule <k> evalTermInst (Term) => . ...</k>
         <errors> ... .List => ListItem(error(Term, "term inst not modeled"))</errors> [owise]
-    rule <k> evalTermInst(ret _:VoidType _:InstructionMetadatas) => . ...</k>
+    rule <k> evalTermInst(ret _:VoidType _:InstructionMetadatas) => storeReturnV(uninit) ...</k>
+    //  return local register value
+    rule [TretNonVoidLocalVAddr]: <k>
+        evalTermInst(ret _:NonVoidType LV:LocalName _:InstructionMetadatas)
+    =>
+        checkReturnLifeTime(baseOffsetOf(LV)) ~> storeReturnV(baseOffsetOf(LV))
+    ... </k> requires isAddr(LV)
+
+    rule [TretNonVoidLocalVNonAddr]: <k>
+        evalTermInst(ret _:NonVoidType LV:LocalName _:InstructionMetadatas)
+    =>
+        storeReturnV(lookUpPrim(LV))
+    ... </k> requires isPrim(LV)
+
+    //  for unknown situation
+    rule [TretNonVoidowise]: <k>
+        evalTermInst(ret _:NonVoidType V:ValueRef _:InstructionMetadatas)
+    =>
+        storeReturnV(V)
+    ... </k> [owise]
 
     rule [Tcondbr]: <k> evalTermInst(br _:IntType V:ValueRef, label TrueBB:LabelString, label FalseBB:LabelString _:InstructionMetadatas) => condbr (V, TrueBB, FalseBB) ...</k>
     rule [Tcondbrtrue]: <k> condbr (L:LocalName, TrueBB, _) => evalBlock(TrueBB) ...</k>

@@ -12,23 +12,38 @@ module OBJECT-SYNTAX
                         | MapType
                         | header(ObjectType) 
     syntax MapType ::= "map" "[" ObjectType "]" ObjectType
-    syntax Location ::= "heap" | "stack" | "const"
+    syntax Location ::= "heap" | "stack" | "const" | "static"
     syntax Bool ::= isHeapLoc(Location) [function]
                 |   isStackLoc(Location) [function]
                 |   isConstLoc(Location) [function]
+                |   isStaticLoc(Location) [function]
     
-    //  object(TypeDescriptor, SizeConst, Content, Map[Key]AddressOf(Value), WhetherInStack)
+    //  object(TypeDescriptor, SizeConst, Content, Map[Key]AddressOf(Value), WhetherInStack, LifeTime)
     //  values in List/Map are lazily refreshed.
     //  Content is the content of object, whose size is constant.
     //  Map is ValueRef to Address map, i.e. key/value address map
     //  `SizeConst == true` means num of elements in object is known. We should check ListOfValues. MapOfValues is .Map
     //  `SizeConst == false` means num of elements in object is not constant. We should check MapOfValues. ListOfValues is .List
+    //  LifeTime is Int currently. heap/const is zero, stack object's is marked by lifeTime cell which will increase/decrease with call/ret
     syntax Content ::= NonAddr | Address | List | UnInit | ValueRef
     syntax KItem ::= Content
     syntax KResult ::= List
-    syntax Object ::= object(ObjectType, Bool, Content, Map, Location)
+    syntax LifeTime ::= Int
+                    | currLifeTime() [function]
+                    /*
+                        longer(lhs, rhs)
+                        return whether lifeTime of lhs is longer with rhs, i.e. lhs < rhs
+                    */
+    syntax Bool ::= longer(LifeTime, LifeTime) [function]
+                    /*
+                        longerInObjLife(lhs_obj, rhs_obj)
+                    */
+                    |   longerInObjLife(Object, Object) [function]
+    syntax KItem ::= checkReturnLifeTime(BaseOffset)
+    syntax Object ::= object(ObjectType, Bool, Content, Map, Location, LifeTime)
 
 // create/search:
+                    | createObjWithSuitableLifeTime(ObjectType, Bool, Content, Map, Location) [function]
                     | createObjList(ObjectType, Location) [function]
                     | createObjMap(ObjectType, Location) [function]
                     | searchObjAtBase(Int) [function]
@@ -45,6 +60,7 @@ module OBJECT-SYNTAX
                 //  是否位置是常量
                 |   isConstObj(Object) [function]
     syntax Type ::= getObjType(Object) [function]
+    syntax LifeTime ::= getObjLifeTime(Object) [function]
     syntax KResult ::= Int
     syntax KResult ::= Object
     //  isValidBaseMapIdxCtor(Key, Addr)
@@ -178,12 +194,54 @@ module OBJECT
     rule isStackLoc (_:Location) => false [owise]
     rule isConstLoc (const) => true
     rule isConstLoc (_:Location) => false [owise]
+    rule isStaticLoc (static) => true
+    rule isStaticLoc (_:Location) => false [owise]
 
+// LifeTime
+    rule [[ currLifeTime() => Time ]]
+    <lifeTime> Time:Int </lifeTime>
+    rule longer (LHS:Int, RHS:Int) => LHS <Int RHS
+    rule longerInObjLife(LHS:Object, RHS:Object) => longer(getObjLifeTime(LHS), getObjLifeTime(RHS))
+    
+    // 返回地址只有生命期比当前栈的生命期更长才被允许
+    rule <k>
+        checkReturnLifeTime(Addr:BaseOffset)
+    =>
+        .
+    ... </k> requires longer(getObjLifeTime(searchObjAtAddr(Addr)), currLifeTime())
+
+    // rule <k>
+    //     checkReturnLifeTime(Addr:BaseOffset)
+    // =>
+    //     stuck()
+    // ... </k> [owise]
+
+
+// Object
 // create/search:-------------------------------
-    rule createObjList(ObjTy:Type, Loc) => object(ObjTy, true, initOfType(ObjTy), .Map, Loc)
-    rule createObjList(ObjTy, Loc) => object(ObjTy, true, uninit, .Map, Loc) [owise]
+    rule
+        createObjWithSuitableLifeTime(ObjTy:ObjectType, SizeConst:Bool, C:Content, M:Map, heap)
+    =>
+        object (ObjTy, SizeConst, C, M, heap, 0)
+    rule
+        createObjWithSuitableLifeTime(ObjTy:ObjectType, SizeConst:Bool, C:Content, M:Map, const)
+    =>
+        object (ObjTy, SizeConst, C, M, const, 0)
+    rule
+        createObjWithSuitableLifeTime(ObjTy:ObjectType, SizeConst:Bool, C:Content, M:Map, static)
+    =>
+        object (ObjTy, SizeConst, C, M, static, 0)
+    rule
+    [[
+        createObjWithSuitableLifeTime(ObjTy:ObjectType, SizeConst:Bool, C:Content, M:Map, stack)
+    =>
+        object (ObjTy, SizeConst, C, M, stack, Life)
+    ]]
+    <lifeTime> Life:Int </lifeTime>
+    rule createObjList(ObjTy:Type, Loc) => createObjWithSuitableLifeTime(ObjTy, true, initOfType(ObjTy), .Map, Loc)
+    rule createObjList(ObjTy, Loc) => createObjWithSuitableLifeTime(ObjTy, true, uninit, .Map, Loc) [owise]
 
-    rule createObjMap(ObjTy, Loc) => object (ObjTy, false, .List, .Map, Loc)
+    rule createObjMap(ObjTy, Loc) => createObjWithSuitableLifeTime (ObjTy, false, .List, .Map, Loc)
 
     rule [[ searchObjAtBase(Addr:Int) => Obj ]]
         <mem>
@@ -193,22 +251,24 @@ module OBJECT
     rule searchObjAtAddr (baseMapIdx (Base:Int, _:ValueRef)) => searchObjAtBase (Base)
     rule searchObjAtLocalV (L:LocalName) => searchObjAtAddr(addressValOf(L))
     rule searchObjAtGlobalV(GV:GlobalName) => searchObjAtAddr(addressValOfGlobalV(GV))
-    rule moveToHeap (object(Ty, SizeConst, C, M, _:Location)) => object(Ty, SizeConst, C, M, heap)
-    rule replaceType(object(_:ObjectType, SizeConst, C, M, Loc), NewType:ObjectType) => object(NewType, SizeConst, C, M, Loc)
+    rule moveToHeap (object(Ty, SizeConst, C, M, _:Location, _:LifeTime)) => object(Ty, SizeConst, C, M, heap, 0)
+    rule replaceType(object(_:ObjectType, SizeConst, C, M, Loc, Life:LifeTime), NewType:ObjectType) => object(NewType, SizeConst, C, M, Loc, Life)
 
 // properties:---------------------------------
-    rule inHeap(object(_:ObjectType, _:Bool, _:Content, _:Map, Loc:Location)) => Loc ==K heap
+    rule inHeap(object(_:ObjectType, _:Bool, _:Content, _:Map, Loc:Location, _:LifeTime)) => isHeapLoc(Loc)
 
-    rule isSizeConst(object(_:ObjectType, SizeConst:Bool, _:Content, _:Map, _:Location)) => SizeConst
+    rule isSizeConst(object(_:ObjectType, SizeConst:Bool, _:Content, _:Map, _:Location, _:LifeTime)) => SizeConst
 
-    rule isConstObj(object(_:ObjectType, _:Bool, _:Content, _:Map, L:Location)) => isConstLoc (L)
+    rule isConstObj(object(_:ObjectType, _:Bool, _:Content, _:Map, L:Location, _:LifeTime)) => isConstLoc (L)
 
-    rule getObjType(object(ObjTy:ObjectType, _:Bool, _:Content, _:Map, _:Location)) => {ObjTy}:>Type requires isTypeSort(ObjTy)
+    rule getObjType(object(ObjTy:ObjectType, _:Bool, _:Content, _:Map, _:Location, _:LifeTime)) => {ObjTy}:>Type requires isTypeSort(ObjTy)
+
+    rule getObjLifeTime (object (_:ObjectType, _:Bool, _:Content, _:Map, _:Location, Life:LifeTime)) => Life
 
     rule [[ isValidBaseMapIdxCtor(baseMapIdx (Addr:Int, Key:ValueRef)) => Key in_keys(M) ]]
         <mem>
             ...
-            Addr |-> object (_:ObjectType, _:Bool, _:List, M:Map, _:Location)
+            Addr |-> object (_:ObjectType, _:Bool, _:List, M:Map, _:Location, _:LifeTime)
             ...
         </mem>
     
@@ -241,12 +301,12 @@ module OBJECT
     rule [TreadObjMap]: [[ readObjMap(baseMapIdx (Addr:Int, Key:ValueRef)) => {M [ Key ]}:>Address ]]
         <mem>
             ...
-            Addr |-> object(_:ObjectType, _:Bool, _:Content, M:Map, _:Location)
+            Addr |-> object(_:ObjectType, _:Bool, _:Content, M:Map, _:Location, _:LifeTime)
             ...
         </mem> requires Key in_keys(M)
     rule [TreadObjList]: [[ readObjList(baseOffset (Base:Int, IdxList:List)) => getContentElemMultiDim(Cont, IdxList:List) ]]
         <mem>
-            ... Base |-> object (_:ObjectType, _:Bool, Cont, _:Map, _:Location) ...
+            ... Base |-> object (_:ObjectType, _:Bool, Cont, _:Map, _:Location, _:LifeTime) ...
         </mem>
     rule readContentAtAddr (Addr:BaseOffset) => readObjList (Addr)
     rule readContentAtAddr (Addr:BaseMapIdx) => readObjMap (Addr)
@@ -266,9 +326,9 @@ module OBJECT
     
 
 // update:-----------------------------------
-    rule updateListOfObject(object(T:ObjectType, Const:Bool, L:Content, M:Map, Loc:Location), IdxList:List, NewVal:Content) => object(T, Const, updateContentMultiDim(L, IdxList, NewVal), M, Loc)
+    rule updateListOfObject(object(T:ObjectType, Const:Bool, L:Content, M:Map, Loc:Location, Life:LifeTime), IdxList:List, NewVal:Content) => object(T, Const, updateContentMultiDim(L, IdxList, NewVal), M, Loc, Life)
 
-    rule updateMapOfObject (object(T:ObjectType, Const:Bool, L:Content, M:Map, Loc:Location), Key:ValueRef, NewVal:Address) => object(T, Const, L, M [Key <- NewVal], Loc)
+    rule updateMapOfObject (object(T:ObjectType, Const:Bool, L:Content, M:Map, Loc:Location, Life:LifeTime), Key:ValueRef, NewVal:Address) => object(T, Const, L, M [Key <- NewVal], Loc, Life:LifeTime)
 
     rule <k> updateObjList (baseOffset(Base, IdxList:List), NewVal:Content) => . ...  </k>
         <mem>
@@ -488,8 +548,8 @@ module OBJECT
         </mem>
     rule <k> allocObj(O:Object) => allocObjAtBase(currBase(), O) ~> useNewAddr() ...</k>
         
-    rule <k> allocUnknownObj(Loc:Location) => allocObj(object(unknown, true, uninit, .Map, Loc)) ...</k>
-    rule <k> allocArray(ElemTD:ValueRef, Cap:Int, Loc:Location) => allocObj(object([ Cap x ElemTD ], true, .List, .Map, Loc)) ...</k>
+    rule <k> allocUnknownObj(Loc:Location) => allocObj(createObjWithSuitableLifeTime(unknown, true, uninit, .Map, Loc)) ...</k>
+    rule <k> allocArray(ElemTD:ValueRef, Cap:Int, Loc:Location) => allocObj(createObjWithSuitableLifeTime([ Cap x ElemTD ], true, .List, .Map, Loc)) ...</k>
 
     
 endmodule

@@ -40,8 +40,18 @@ module GOLLVM-STATIC
         constant T:Type C:ConstValueRef
         _:OptSectionComdatAndAlign
     =>
-        globalAddrMapInsert(GlobalV, allocObj(object(T, true, newConst(C), .Map, const)))
+        globalAddrMapInsert(GlobalV, allocObj(createObjWithSuitableLifeTime(T, true, newConst(C), .Map, const)))
     ...</k>
+
+    // global registers
+    rule <k>
+        GlobalV:GlobalName =
+        _:NonExternalLinkage _:OptVisibilityStyle _:OptDllStorageClass _:OptThreadLocal _:OptAddrSpace _:OptUnnamedAddr _:OptExternallyInitialized
+        global T:Type C:ConstValueRef
+        _:OptSectionComdatAndAlign
+    =>
+        globalAddrMapInsert(GlobalV, allocObj(createObjWithSuitableLifeTime(T, true, newConst(C), .Map, static)))
+    ... </k>
 
     //  function definition
     rule <k> define _:FunctionPrefix _:FunctionHeaderPrefix T:Type Name:GlobalName ( Params:ArgList ) _:FunctionHeaderSuffix { StartBlock:BasicBlock Blocks:BasicBlockList }

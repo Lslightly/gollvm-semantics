@@ -207,7 +207,7 @@ module GOLLVM-MEM
     =>
         updateObjAtAddr(getTypeMatchedBaseOffset(DstType, baseOffsetOf(Dst)), addressValOf(Src))
     ...</k>
-        requires notBool (inHeap(searchObjAtLocalV(Dst)) andBool notBool inHeap(searchObjAtLocalV (Src)))
+        requires notBool longerInObjLife(searchObjAtLocalV(Dst), searchObjAtLocalV(Src))
     rule <k>
         storeAddress(Dst:LocalName, DstType:Type, Src:LocalName)
     =>

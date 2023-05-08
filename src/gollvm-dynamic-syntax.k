@@ -270,9 +270,40 @@ module GOLLVM-DYNAMIC-SYNTAX
     imports BOOL-SYNTAX
     imports ARRAY-SYNTAX
     imports MAP
+    imports SET
     imports K-EQUAL
     imports LIST-HELPER-SYNTAX
     syntax KItem ::= evalBlock(LabelString) | evalFunc(GlobalName) | evalInsts(List) | evalTermInst(BBTerminatorInstruction) | execInst(Instruction)
+
+                //  frame(local2Base, local2prim, stackAllocs)
+    syntax StackFrame ::= frame(Map, Map, Map)
+    syntax Map ::= getLastFrameLocal2Base() [function]
+                |  getLastFrameLocal2prim() [function]
+                |  getLastFrameStackAllocs() [function]
+    syntax Bool ::= inLastFrameLocal2Base(LocalName) [function]
+                |   inLastFrameLocal2prim(LocalName) [function]
+    syntax BaseOffset ::= getLastFrameBaseOffsetOf(LocalName) [function]
+    syntax Content ::= getLastFramePrimOf(LocalName) [function]
+                //  store/restore local2Base local2prim stackAllocs, need to be sync with frame structure
+    syntax KItem ::= stuck()
+    syntax KItem ::= storeStackState() | restoreStackState()
+                //  increase life time number / decrease life time number
+                |   shorterLifeTime()  | longerLifeTime()
+                //  map arguments to parameters.
+                |   mapArgsToParams(ParamList, ArgList)
+                //  map one argument to one parameter, find parameter's value in stack frame
+                |   mapArgToParam(ValueRef, LocalVar)
+                |   storeReturnV(KItem)
+                //  get return value
+                |   getReturnV() [function]
+                //  map return value to receiver
+                |   mapReturnToReceiver(LocalName)
+    
+                    //  return whether function has definition
+    syntax Bool ::= isDefineFunction(GlobalName) [function]
+                    //  return param list of function
+    syntax ArgList ::= getParams(GlobalName) [function]
+    
     syntax Int ::= currBase() [function]
     syntax LabelString ::= getLastBlock() [function]
 
