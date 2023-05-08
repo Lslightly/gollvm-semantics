@@ -12,6 +12,11 @@ module GOLLVM-TYPE-DESCRIPTOR-SYNTAX
     imports CONSTANT-DYNAMIC-SYNTAX
     imports BOOL
     syntax Bool ::= isStructTypeTD(GlobalName) [function]
+                |   isPointerTypeTD(GlobalName) [function]
+                |   istypeTD(GlobalName) [function]
+                |   isTypeDescriptorGV(GlobalName) [function]
+                //  判断ValueRef是否为类型描述符
+                |   isTypeDescriptor(ValueRef) [function]
 endmodule
 
 module GOLLVM-TYPE-DESCRIPTOR
@@ -20,6 +25,13 @@ module GOLLVM-TYPE-DESCRIPTOR
     imports CONSTANT
     imports STRING
     rule isStructTypeTD(GV:GlobalName) => LocalNameToString({getTypeOfGlobalV(GV)}:>LocalName) ==String "%StructType.0"
+    rule isPointerTypeTD(GV:GlobalName) => LocalNameToString({getTypeOfGlobalV(GV)}:>LocalName) ==String "%PtrType.0"
+    rule istypeTD(GV:GlobalName) => LocalNameToString({getTypeOfGlobalV(GV)}:>LocalName) ==String "%_type.0"
+    rule isTypeDescriptorGV(GV:GlobalName) =>
+        isStructTypeTD(GV)
+    orElseBool isPointerTypeTD(GV)
+    orElseBool istypeTD(GV)
+    rule isTypeDescriptor(V:ValueRef) => (isGepConst(V) orBool isBitcastConst (V) ) andThenBool isTypeDescriptorGV(extractGlobalName(V))
 endmodule
 
 module LLVM-TYPE-DYNAMIC-SYNTAX
@@ -307,7 +319,9 @@ module GOLLVM-DYNAMIC-SYNTAX
     syntax Int ::= currBase() [function]
     syntax LabelString ::= getLastBlock() [function]
 
-    syntax KItem ::= warn(KItem, String) | error(KItem, String) | heap2stack(KItem, KItem, KItem)
+    syntax Instruction ::= getCurrInst() [function]
+
+    syntax KItem ::= warn(KItem, String) | error(KItem, String)
 
     syntax UnInit ::= "uninit"
     syntax KItem ::= UnInit

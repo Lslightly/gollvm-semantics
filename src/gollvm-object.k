@@ -85,7 +85,7 @@ module OBJECT-SYNTAX
     syntax Int ::= getSizeOfTypeOfOffset(BaseOffset) [function]
     /*
         getTypeMatchedBaseOffset(ToBeMatchedType, OriginAddr)
-        every baseoffset has its type. this function return the most type matched BaseOffset from OriginAddr
+        every baseoffset has its type. this function return the most type matched BaseOffset from OriginAddr, i.e. minimized step BaseOffset
     */
     syntax BaseOffset ::= getTypeMatchedBaseOffset(Type, BaseOffset) [function]
     /*
@@ -210,11 +210,13 @@ module OBJECT
         .
     ... </k> requires longer(getObjLifeTime(searchObjAtAddr(Addr)), currLifeTime())
 
-    // rule <k>
-    //     checkReturnLifeTime(Addr:BaseOffset)
-    // =>
-    //     stuck()
-    // ... </k> [owise]
+    rule <k>
+        checkReturnLifeTime(Addr:BaseOffset)
+    =>
+        stuck()
+    ... </k>
+        <errors> ... .List => ListItem(retStackAddr(getCurrInst (), Addr)) </errors>
+    [owise]
 
 
 // Object
@@ -333,12 +335,29 @@ module OBJECT
     rule <k> updateObjList (baseOffset(Base, IdxList:List), NewVal:Content) => . ...  </k>
         <mem>
             Mem => Mem [ Base <- updateListOfObject (searchObjAtBase(Base), IdxList, NewVal)]
+        </mem> [priority(51)]
+    //  TODO 嵌套结构中可能包含地址值
+    rule <k>
+        updateObjList(baseOffset(Base, IdxList:List) #as Dst, NewVal:Address) => .
+    ... </k>
+        <mem>
+            Mem => Mem [ Base <- updateListOfObject (searchObjAtBase(Base), IdxList, NewVal)]
         </mem>
+        <errors> ... .List => ListItem(longLifeGetShorterLifeAddr(getCurrInst(), Dst, NewVal)) </errors>
+        requires longerInObjLife(searchObjAtBase(Base), searchObjAtAddr(NewVal))
+    
     
     rule <k> updateObjMap (baseMapIdx (Base:Int, Key:ValueRef), ValPtr:Address) => . ... </k>
         <mem>
             Mem => Mem [ Base <- updateMapOfObject(searchObjAtBase (Base), Key, ValPtr) ]
         </mem>
+        [priority(51)]
+    rule <k> updateObjMap (baseMapIdx (Base:Int, Key:ValueRef) #as Dst, ValPtr:Address) => . ... </k>
+        <mem>
+            Mem => Mem [ Base <- updateMapOfObject(searchObjAtBase (Base), Key, ValPtr) ]
+        </mem>
+        <errors> ... .List => ListItem(longLifeGetShorterLifeAddr(getCurrInst(), Dst, ValPtr)) </errors>
+        requires longerInObjLife(searchObjAtBase(Base), searchObjAtAddr(ValPtr))
     rule [TupdateObjListAtLocalV]: <k> updateObjListAtLocalV(V:LocalName, Idxs:Ints, NewVal:KItem)
     => 
         updateObjList(appendOffset(baseOffsetOf(V), createIdxList(Idxs)), nonAddr(NewVal))

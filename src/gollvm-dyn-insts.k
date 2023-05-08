@@ -35,11 +35,18 @@ module GOLLVM-DYN-INSTS-SYNTAX
                    extractPhiMap(Map, LocalName) [function]
                 |  getPhiMap() [function]
 
+                //  always return list of int ValueRef mapped to in ReturnedValGep/ReturnedVal
     syntax List ::= getGepIdxList(ReturnedValGep) [function]
+                //  TODO implement
+                |   getIntListFromReturnedVal(ReturnedVal) [function]
     /*
-        get size of 
+        get size of Int offset List under type
     */
-    syntax Int ::= sizeOfGepIdxList(Type, ReturnedValGep) [function]
+    syntax Int ::= sizeOfGepIdxList(Type, List) [function]
+                        //  通用的从ValueRef中获取地址
+    syntax BaseOffset ::= getBaseOffsetFromValueRef(ValueRef) [function]
+                        //  通用的从ValueRef中获取内容
+    syntax Content ::= getContentFromValueRef(ValueRef) [function]
 endmodule
 
 //  dyn-insts总模块
@@ -82,32 +89,56 @@ module GOLLVM-DYN-INSTS
     rule getGepIdxList(_:OptInRange _:Type V:ValueRef , Remains:ReturnedValGep) => ListItem(castIntPrim(V)) getGepIdxList(Remains) requires toIntCastable(V)
     rule getGepIdxList(.ReturnedValGep) => .List
 
-    rule [TsizeOfGepIdxListRecur]: sizeOfGepIdxList(T:Type, _:OptInRange _:Type V:ValueRef , Remains:ReturnedValGep)
+    rule getIntListFromReturnedVal(_:Type V:ValueRef , Remains:ReturnedVal) => ListItem(castIntPrim(V)) getIntListFromReturnedVal(Remains) requires toIntCastable(V)
+    rule getIntListFromReturnedVal(.ReturnedVal) => .List
+
+    rule [TsizeOfGepIdxListRecur]: sizeOfGepIdxList(T:Type, ListItem(V:Int) Remains:List)
     =>
-        castIntPrim(V) *Int SizeOfType(T) +Int sizeOfGepIdxList(subType(T, ListItem(0)), Remains) requires toIntCastable(V)
+        V *Int SizeOfType(T) +Int sizeOfGepIdxList(subType(T, ListItem(0)), Remains)
     [priority(51)]
 
     rule [TsizeOfGepIdxListStruct]:
         sizeOfGepIdxList(
             StructT:StructType,
-            _:OptInRange _:Type StructOffset:ValueRef,
-            Remains:ReturnedValGep
+            ListItem(StructOffset:Int)
+            Remains:List
         )
     =>
-        castIntPrim(StructOffset) *Int SizeOfType(StructT)
-            +Int offsetOfFieldIdxList(StructT, getGepIdxList(Remains))
-    requires toIntCastable(StructOffset)
+        StructOffset *Int SizeOfType(StructT)
+            +Int offsetOfFieldIdxList(StructT, Remains)
     [priority(50)]
 
-    rule [TsizeOfGepIdxList]: sizeOfGepIdxList(T:Type, _:OptInRange _:Type V:ValueRef , .ReturnedValGep)
+    rule [TsizeOfGepIdxList]: sizeOfGepIdxList(T:Type, ListItem(V:Int) .List)
     =>
-        castIntPrim(V) *Int SizeOfType(T) requires toIntCastable(V)
+        V *Int SizeOfType(T)
     [priority(50)]
 
     rule [TsizeOfGepIdxListNoIdx]:
-        sizeOfGepIdxList(_:Type, .ReturnedValGep)
+        sizeOfGepIdxList(_:Type, .List)
     =>
         0
+    
+    //  与getelementptr处理方式同步
+    rule getBaseOffsetFromValueRef(getelementptr _:OptInBounds(_:Type, SrcPointsToType _:OptAddrSpace * Src:ValueRef, IdxList:ReturnedVal)) => addSize(getBaseOffsetFromValueRef(Src), sizeOfGepIdxList(SrcPointsToType, getIntListFromReturnedVal(IdxList)))
+    //  与bitcast处理方式同步
+    rule
+        getBaseOffsetFromValueRef(bitcast (_:Type V:ValueRef to Ty:Type))
+    =>
+        largestStepOffset(getBaseOffsetFromValueRef(V))
+    requires isi8(Ty)
+    rule
+        getBaseOffsetFromValueRef(bitcast (_:Type V:ValueRef to Ty:Type))
+    =>
+        getSizeMatchedOffset(SizeOfType(Ty), getBaseOffsetFromValueRef(V))
+    requires notBool isi8(Ty)
+
+    rule getBaseOffsetFromValueRef(LV:LocalName) => baseOffsetOf(LV)
+    rule getBaseOffsetFromValueRef(GV:GlobalName) => baseOffsetOfGlobalV(GV)
+
+    rule getContentFromValueRef(LV:LocalName) => baseOffsetOf (LV) requires isAddr(LV)
+    rule getContentFromValueRef (LV:LocalName) => {lookUpPrim (LV)}:>Content requires isPrim(LV)
+    rule getContentFromValueRef (GV:GlobalName) => baseOffsetOfGlobalV(GV) 
+    rule getContentFromValueRef (V:ConstExpr) => V requires isTypeDescriptor(V)
     
 endmodule
 
@@ -252,6 +283,13 @@ module GOLLVM-NORMAL-INSTS
         <k>
             execInst(store _:OptVolatile VType:Type V:ConstValueRef , _:Type Dst:LocalName , _:Align _:InstructionMetadatas) => storeNonAddr(Dst, VType, nonAddr(V):NonAddr) ...
         </k>
+    
+    rule [TstoreGeneral]:
+        <k>
+            execInst(store _:OptVolatile VType:Type V:ValueRef, _:Type Dst:ConstExpr, _:Align _:InstructionMetadatas)
+        =>
+            updateObjAtAddr(getTypeMatchedBaseOffset(VType, getBaseOffsetFromValueRef(Dst)), getContentFromValueRef(V))
+        ... </k> [owise]
 
     rule [Talloc]:
         <k>
@@ -274,7 +312,7 @@ module GOLLVM-NORMAL-INSTS
                 Dst,
                 addSize(
                     baseOffsetOf(Src),
-                    sizeOfGepIdxList(SrcPointsToType, IdxList)
+                    sizeOfGepIdxList(SrcPointsToType, getGepIdxList(IdxList))
                 )
             )
         ...</k>

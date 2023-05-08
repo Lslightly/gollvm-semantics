@@ -73,6 +73,9 @@ module GOLLVM-DYNAMIC
     rule [[ getLastBlock() => LastBlock ]]
         <lastBlock> LastBlock:LabelString </lastBlock>
 
+    rule [[ getCurrInst () => I ]]
+        <currInst> I:Instruction </currInst>
+
     rule [[ isDefineFunction(Fn:GlobalName) => true ]]
         <functionName> Fn </functionName>
     rule isDefineFunction(_:GlobalName) => false [owise]

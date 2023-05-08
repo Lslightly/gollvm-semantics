@@ -88,3 +88,9 @@ Constant也放入mem中
   - [X] ret时将也有生命期问题。
     - 通过checkReturnLifeTime解决
   - [ ] unsafe.Pointer和uintptr会栈地址被返回被允许。不考虑unsafe和uintptr引入的不安全性。
+
+- [X] 添加updateObjAtAddr的LifeTime检查
+  - 对mem中object Content部分可能进行修改的操作
+    - updateObjList
+      - 添加对Content的检查
+    - updateObjMap

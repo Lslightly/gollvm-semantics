@@ -68,8 +68,11 @@ module RUNTIME-PREPROCESS
     => mapassign(LocalV, MapTD, Hmap, Key) ...</k>
 
     rule <k>
-    VoidGlobalCall (@runtime.gcWriteBarrier, _:ParamFactor, _:Type _:ParamAttrs Dst:LocalName, _:Type _:ParamAttrs Src:LocalName)
-    => storeAddress(Dst, StringToIntTypePre("i64") .OptAddrSpace *, Src) ... </k>
+        VoidGlobalCall (@runtime.gcWriteBarrier, _:ParamFactor, _:Type _:ParamAttrs Dst:ValueRef, _:Type _:ParamAttrs Src:ValueRef)
+    =>
+        updateObjAtAddr(getTypeMatchedBaseOffset(StringToIntTypePre("i64") .OptAddrSpace *, getBaseOffsetFromValueRef(Dst)), getContentFromValueRef(Src))
+    ... </k>
+
 
     rule <k>
     VoidGlobalCall (@llvm.memcpy.p0i8.p0i8.i64, _:Type _:ParamAttrs DstPtr:LocalName , _:Type _:ParamAttrs SrcPtr:LocalName, _:Type _:ParamAttrs Size:Int, _:ParamFactor) => memcpy(DstPtr, SrcPtr, Size) ...

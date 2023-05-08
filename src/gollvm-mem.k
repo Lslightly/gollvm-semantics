@@ -69,6 +69,7 @@ module GOLLVM-MEM-SYNTAX
                         |   "nil"
                         |   pureAddr(Int) [function]
                         |   baseOffsetOf(LocalName) [function]
+                        |   baseOffsetOfGlobalV(GlobalName) [function]
                         |   baseOffsetOfWrapper(LocalName)
                         |   appendOffset(BaseOffset, List) [function]
                         //  cast baseOffset(Base, IdxList) to baseOffset(Base, prefixOfList(IdxList, num of idxes))
@@ -106,6 +107,7 @@ module GOLLVM-MEM-SYNTAX
     syntax KItem ::= addrAlias(LocalName, LocalName)
                     //  局部寄存器添加地址
                 |   addrMapInsert(LocalName, Address) [seqstrict]
+                    //  全局寄存器添加地址
                 |   globalAddrMapInsert(GlobalName, Address) [seqstrict]
     //  store(dst, dstType, srcv)
     //  store the address of srcv to dst's address according to dstType
@@ -131,6 +133,8 @@ module GOLLVM-MEM-SYNTAX
                     */
                 |   memmoveToHeapAddr(KItem, KItem) [seqstrict]
 
+    syntax Error ::= longLifeGetShorterLifeAddr(Instruction, Address, Address)
+            | retStackAddr(Instruction, Address)
 
 endmodule
 
@@ -164,6 +168,7 @@ module GOLLVM-MEM
 
     rule pureAddr (Addr:Int) => baseOffset (Addr, .List)
     rule baseOffsetOf(L:LocalName) => {addressValOf(L)}:>BaseOffset requires isBaseOffsetSort(addressValOf(L))
+    rule baseOffsetOfGlobalV (GV:GlobalName) => {addressValOfGlobalV (GV)}:>BaseOffset requires isBaseOffsetSort(addressValOfGlobalV (GV))
     rule <k>
         baseOffsetOfWrapper(L:LocalName)
     =>
@@ -207,14 +212,6 @@ module GOLLVM-MEM
     =>
         updateObjAtAddr(getTypeMatchedBaseOffset(DstType, baseOffsetOf(Dst)), addressValOf(Src))
     ...</k>
-        requires notBool longerInObjLife(searchObjAtLocalV(Dst), searchObjAtLocalV(Src))
-    rule <k>
-        storeAddress(Dst:LocalName, DstType:Type, Src:LocalName)
-    =>
-        updateObjAtAddr(getTypeMatchedBaseOffset(DstType, baseOffsetOf(Dst)), addressValOf(Src)) ...</k>
-        <currInst> CurrInst </currInst>
-        <errors>... .List => ListItem(heap2stack(Dst, Src, CurrInst))</errors>
-        [owise]
     
     rule <k>
         storeNonAddr (L:LocalName, VType:Type, Non:NonAddr)
