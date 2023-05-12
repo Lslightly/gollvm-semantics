@@ -1,7 +1,16 @@
+module GOLLVM-SYNTAX-FOR-CONFIGURATION
+  imports STRING-SYNTAX
+    syntax Module ::= List{Definition," "}
+    syntax KItem ::= Module
+
+    syntax SourceFileName ::= "source_filename" "=" String
+    syntax Definition ::= SourceFileName
+endmodule
 /*
     LLVM Syntax
 */
 module GOLLVM-SYNTAX
+    imports GOLLVM-SYNTAX-FOR-CONFIGURATION
     imports INT
     imports STRING-SYNTAX
     imports BASIC-K
@@ -413,6 +422,7 @@ module GOLLVM-SYNTAX
 
     syntax Dereferenceable ::= "dereferenceable" "(" Int ")"
     syntax ParamAttr ::= Align | "sret" | "nocapture" | "byval"
+                       | "byval" "(" Type ")"
                        | "nest" | "inalloca" | "returned"
                        | "readnone" [klabel(#readnoneOfParam)]
                        | "readonly" [klabel(#readonlyOfParam)]
@@ -559,6 +569,10 @@ module GOLLVM-SYNTAX
                                 | "," "section" String "," Comdat
                                 | "," "section" String "," Comdat "," Align
 
+
+    syntax PersonalityConstant ::= ResolvedVal
+    syntax Personality ::= "personality" PersonalityConstant
+    syntax OptPersonality ::= List{Personality, " "}
 
     /*@
       an optional address space attribute defines the numbered address
@@ -935,6 +949,7 @@ module GOLLVM-SYNTAX
                            | MetadataValueString
                            | "!" "(" IndexList ")"
                            | "!" "{" MetadataValues "}"
+                           | "poison"
     syntax KResult ::= ConstValueRef
     //define the values that appear in a metadata list
     syntax MetadataValueInt ::= "!" Int [klabel(#metaValueInVarForm)]
@@ -1217,7 +1232,7 @@ module GOLLVM-SYNTAX
     */
     syntax FunctionHeaderPrefix ::= OptCallingConv RetAttrs
     syntax FunctionHeaderSuffix ::= OptUnnamedAddr FuncAttrs OptSection
-                                OptComdat OptAlign 
+                                OptComdat OptAlign OptPersonality
                                 // OptGC
                                 // OptPrefix 
                                 // OptPrologue
@@ -1251,7 +1266,6 @@ module GOLLVM-SYNTAX
     syntax FunctionPrefix ::= OptLinkage OptVisibilityStyle OptDllStorageClass
     syntax Function ::= FunctionPrefix FunctionHeader "{" BasicBlockList "}"
 
-    syntax SourceFileName ::= "source_filename" "=" String
 
     /*@
       LLVM programs are composed of Module‘s, each of which is a translation unit
@@ -1293,9 +1307,5 @@ module GOLLVM-SYNTAX
                         | MetadataVar "=" "!" "{" MetadataInts "}"
                         | ComdatVar "=" "comdat" SelectionKind
                         | "attributes" AttributeGroupId "=" "{" GroupAttrs "}"
-                        | SourceFileName
-
-    syntax Module ::= List{Definition," "} [klabel(#defList)]
-    syntax KItem ::= Module
 
 endmodule

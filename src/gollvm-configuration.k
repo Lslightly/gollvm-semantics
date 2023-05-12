@@ -1,6 +1,7 @@
 requires "gollvm-syntax.k"
 module GOLLVM-CONFIGURATION
-    imports GOLLVM-SYNTAX
+    imports GOLLVM-SYNTAX-FOR-CONFIGURATION
+    imports INT
     imports LIST
     imports MAP
     syntax Entry ::= "CallMain" "(" ")"
