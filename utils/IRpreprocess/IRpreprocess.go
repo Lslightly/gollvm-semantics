@@ -140,19 +140,20 @@ func (LabelPrefixTrimer) run(content string) string {
 	lines := strings.Split(content, "\n")
 	res := make([]string, 0, len(lines))
 	for _, line := range lines {
-		tmp := brTrimLabel(line)
+		tmp := trimLabelStringPrefix(line)
 		tmp = phiTrimLabel(tmp)
 		res = append(res, tmp)
 	}
 	return strings.Join(res, "\n")
 }
 
-func brTrimLabel(line string) string {
-	if strings.Contains(line, "br") {
-		label_re := regexp.MustCompile("label(.*?)\\%(.*?)")
-		return label_re.ReplaceAllString(line, "label$1$2")
+func trimLabelStringPrefix(line string) string {
+	label_re := regexp.MustCompile("label %(\\S+?)(\\s|$)")
+	tmp := line
+	for label_re.MatchString(tmp) {
+		tmp = label_re.ReplaceAllString(tmp, "label $1$2")
 	}
-	return line
+	return tmp
 }
 
 func phiTrimLabel(line string) string {
