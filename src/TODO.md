@@ -112,7 +112,7 @@ Constant也放入mem中
 - [X] storeStackState()存储control
 
 - [X] useNewAddr()时没有新分配空间，通过lastAddr()获取刚分配的地址
-- [ ] growslice moveToHeap需要嵌套检查内部结构是否改变，优先级高
+- [X] growslice moveToHeap需要嵌套检查内部结构是否改变，优先级高
 
 - [ ] 给search的例子，需要能体现未知情况下也能进行搜索
 
@@ -122,3 +122,5 @@ Constant也放入mem中
 - [ ] mapaccess
 
 - [ ] 在未建模call函数error中添加参数对应的值
+- [ ] 递归Content检查是否有堆指向栈的问题updateObjList，例如在growslice时进行拷贝
+  - [X] List情况可以检查

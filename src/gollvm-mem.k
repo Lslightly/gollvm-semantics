@@ -140,7 +140,7 @@ module GOLLVM-MEM-SYNTAX
                     */
                 |   memmoveToHeapAddr(KItem, KItem) [seqstrict]
 
-    syntax Error ::= longLifeGetShorterLifeAddr(Instruction, Address, Address)
+    syntax Error ::= longLifeGetShorterLifeAddr(Instruction, Address, Content)
             | retStackAddr(Instruction, Address)
 
 endmodule
@@ -261,12 +261,12 @@ module GOLLVM-MEM
 
     rule [TmemmoveToHeap]: <k> memmoveToHeap(Dst:LocalName, Src:LocalName)
     =>
-        allocObjAtBase(getBase(addressValOf(Dst)), moveToHeap(searchObjAtLocalV(Src))) ...</k>
+        allocObjAtBase(getBase(addressValOf(Dst)), moveToHeap(searchObjAtLocalV(Src))) ~> selfCheckLifeTime(addressValOf(Dst)) ...</k>
 
     rule [TmemmoveToHeapAddr]: <k>
         memmoveToHeapAddr(DstAddr:Address, SrcAddr:Address)
     =>
-        allocObjAtBase(getBase(DstAddr), moveToHeap(searchObjAtAddr(SrcAddr)))
+        allocObjAtBase(getBase(DstAddr), moveToHeap(searchObjAtAddr(SrcAddr))) ~> selfCheckLifeTime(DstAddr)
         ... </k>
 
     /*

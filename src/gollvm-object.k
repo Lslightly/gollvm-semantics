@@ -13,6 +13,7 @@ module OBJECT-SYNTAX
                         | header(ObjectType) 
     syntax MapType ::= "map" "[" ObjectType "]" ObjectType
     syntax Location ::= "heap" | "stack" | "const" | "static"
+                |   getObjLoc(Object) [function]
     syntax Bool ::= isHeapLoc(Location) [function]
                 |   isStackLoc(Location) [function]
                 |   isConstLoc(Location) [function]
@@ -26,6 +27,7 @@ module OBJECT-SYNTAX
     //  `SizeConst == false` means num of elements in object is not constant. We should check MapOfValues. ListOfValues is .List
     //  LifeTime is Int currently. heap/const is zero, stack object's is marked by lifeTime cell which will increase/decrease with call/ret
     syntax Content ::= NonAddr | Address | List | UnInit | ValueRef
+                |   getObjContent(Object) [function]
     syntax KItem ::= Content
     syntax KResult ::= List
     syntax LifeTime ::= Int
@@ -39,7 +41,15 @@ module OBJECT-SYNTAX
                         longerInObjLife(lhs_obj, rhs_obj)
                     */
                     |   longerInObjLife(Object, Object) [function]
+                    /*
+                        longerRecursiveCheck(DstLocation, DstLifeTime, Content)
+                        recursive check whether objects pointers point to in content have shorter life than DstLocation and DstLifeTime
+                    */
+                    |   longerLifeRecursiveCheck(Location, LifeTime, Content) [function]
     syntax KItem ::= checkReturnLifeTime(BaseOffset)
+                    //  检查对象内容中的地址满足不变式约束，即需要知道对象的地址和生命期
+                    //  注意object需要为修改后的object，function可能返回之前的object
+    syntax KItem ::= selfCheckLifeTime(Address)
     syntax Object ::= object(ObjectType, Bool, Content, Map, Location, LifeTime)
 
 // create/search:
@@ -188,6 +198,7 @@ module OBJECT
     imports GOLLVM-MEM-SYNTAX
     imports K-EQUAL
 
+    rule getObjLoc (object (_:ObjectType, _:Bool, _:Content, _:Map, Loc:Location, _:LifeTime)) => Loc
     rule isHeapLoc (heap) => true
     rule isHeapLoc (_:Location) => false [owise]
     rule isStackLoc (stack) => true
@@ -202,6 +213,43 @@ module OBJECT
     <lifeTime> Time:Int </lifeTime>
     rule longer (LHS:Int, RHS:Int) => LHS <Int RHS
     rule longerInObjLife(LHS:Object, RHS:Object) => longer(getObjLifeTime(LHS), getObjLifeTime(RHS))
+    /*
+        Content可能包含
+            Address
+            nonAddr(KItem)内部可能包含
+            List
+            ValueRef
+                LocalName不可能
+                GlobalName不可能
+                ConstExpr
+                    //TODO
+                    bitcast有可能，先不考虑
+    */
+    rule [TlongerLifeRecursiveCheckAddress]:
+        longerLifeRecursiveCheck(_:Location, DstLife:LifeTime, Addr:Address)
+    =>
+        longer(DstLife, getObjLifeTime(searchObjAtAddr(Addr)))
+
+    rule [TlongerLifeRecursiveCheckNonAddr]:
+        longerLifeRecursiveCheck (DstLoc:Location, DstLife:LifeTime, NAddr:NonAddr)
+    =>
+        longerLifeRecursiveCheck(DstLoc, DstLife, {trimWrapperPrim(NAddr)}:>Content)
+
+    rule [TlongerLifeRecursiveCheckEmptyList]:
+        longerLifeRecursiveCheck(_:Location, _:LifeTime, .List) => false
+
+    rule [TlongerLifeRecursiveCheckList]:
+        longerLifeRecursiveCheck(DstLoc:Location, DstLife:LifeTime, ListItem(I:Content) Remains:List)
+    =>
+            longerLifeRecursiveCheck(DstLoc, DstLife, I) 
+        orElseBool
+            longerLifeRecursiveCheck(DstLoc, DstLife, Remains)
+
+    rule longerLifeRecursiveCheck(_:Location, _:LifeTime, uninit) => false
+
+    rule [TlongerLifeRecursiveCheckValueRef]:
+        longerLifeRecursiveCheck(_:Location, _:LifeTime, _:ValueRef) => false
+
     
     // 返回地址只有生命期比当前栈的生命期更长才被允许
     rule <k>
@@ -217,6 +265,21 @@ module OBJECT
     ... </k>
         <errors> ... .List => ListItem(retStackAddr(getCurrInst (), Addr)) </errors>
     [owise]
+
+    rule <k>
+        selfCheckLifeTime(Addr:Address)
+    =>
+        .
+    ... </k>
+        <errors> ... .List => ListItem(longLifeGetShorterLifeAddr(getCurrInst(), Addr, getObjContent (searchObjAtAddr (Addr)))) </errors>
+        requires longerLifeRecursiveCheck(
+            getObjLoc (searchObjAtAddr (Addr)),
+            getObjLifeTime (searchObjAtAddr (Addr)),
+            getObjContent (searchObjAtAddr (Addr))
+        )
+    rule <k>
+        selfCheckLifeTime (_:Address) => .
+    ... </k> [owise]
 
 
 // Object
@@ -257,6 +320,7 @@ module OBJECT
     rule replaceType(object(_:ObjectType, SizeConst, C, M, Loc, Life:LifeTime), NewType:ObjectType) => object(NewType, SizeConst, C, M, Loc, Life)
 
 // properties:---------------------------------
+    rule getObjContent (object (_:ObjectType, _:Bool, C:Content, _:Map, _:Location, _:LifeTime)) => C
     rule inHeap(object(_:ObjectType, _:Bool, _:Content, _:Map, Loc:Location, _:LifeTime)) => isHeapLoc(Loc)
 
     rule isSizeConst(object(_:ObjectType, SizeConst:Bool, _:Content, _:Map, _:Location, _:LifeTime)) => SizeConst
@@ -336,15 +400,20 @@ module OBJECT
         <mem>
             Mem => Mem [ Base <- updateListOfObject (searchObjAtBase(Base), IdxList, NewVal)]
         </mem> [priority(51)]
+
     //  TODO 嵌套结构中可能包含地址值
     rule <k>
-        updateObjList(baseOffset(Base, IdxList:List) #as Dst, NewVal:Address) => .
+        updateObjList(baseOffset(Base:Int, IdxList:List) #as Dst, NewVal:Content) => .
     ... </k>
         <mem>
-            Mem => Mem [ Base <- updateListOfObject (searchObjAtBase(Base), IdxList, NewVal)]
+            Mem => Mem [ Base <- updateListOfObject (searchObjAtBase(Base), IdxList, NewVal) ]
         </mem>
         <errors> ... .List => ListItem(longLifeGetShorterLifeAddr(getCurrInst(), Dst, NewVal)) </errors>
-        requires longerInObjLife(searchObjAtBase(Base), searchObjAtAddr(NewVal))
+        requires longerLifeRecursiveCheck(
+            getObjLoc(searchObjAtBase(Base)),
+            getObjLifeTime(searchObjAtBase(Base)),
+            NewVal
+        )
     
     
     rule <k> updateObjMap (baseMapIdx (Base:Int, Key:ValueRef), ValPtr:Address) => . ... </k>

@@ -1,0 +1,1 @@
+由于%a被栈分配，所以在growslice时%a地址值被堆获取，发生问题，有三个growslice报错以及4个typedslicecopy报错
