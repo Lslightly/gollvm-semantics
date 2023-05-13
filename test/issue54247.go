@@ -19,6 +19,7 @@ func Escape(task func()) {
 	task()
 }
 
+//go:noinline
 func Recover(objs ...*obj) {
-
+	println(objs[0].id)
 }

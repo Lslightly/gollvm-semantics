@@ -315,10 +315,15 @@ module GOLLVM-DYNAMIC-SYNTAX
                 |   mapReturnToReceiver(LocalName)
     
     // defer utility
-    syntax DeferFrame ::= defer(GlobalName, ValueRef)
+    syntax DeferFrame ::= defer(GlobalName, ParamFactor)
+                |   topOfDeferStack() [function]
                 |   popDeferStack()
     syntax KItem ::= pushDeferStack(DeferFrame)
     syntax Bool ::= isDefetStackEmpty() [function]
+    // execute defer function, following a defer in k cell
+    syntax KItem ::= execDefer(DeferFrame)
+                |   execAllDefers()
+                
 
                     //  return whether function has definition
     syntax Bool ::= isDefineFunction(GlobalName) [function]

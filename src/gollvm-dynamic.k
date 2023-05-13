@@ -214,8 +214,30 @@ module GOLLVM-DYNAMIC
     ... </k>
         <deferStack> ... ListItem(D) .List => .List </deferStack>
     
+    rule [[ topOfDeferStack() => D ]]
+        <deferStack> ... ListItem(D:DeferFrame) .List</deferStack>
+    
     rule [[ isDefetStackEmpty() => size(Stk) ==Int 0 ]]
         <deferStack> Stk:List </deferStack>
+    
+    rule <k>
+        execDefer(defer(Fn:GlobalName, Arg:ParamFactor))
+    =>
+        VoidGlobalCall(Fn, StringToIntTypePre("i8") .OptAddrSpace * .ParamAttrs undef, Arg)
+    ... </k>
+
+    rule [TexecAllDefers]: <k>
+        execAllDefers()
+    =>
+        execDefer(D) ~> execAllDefers()
+    ... </k>
+    <deferStack> ... ListItem(D:DeferFrame) .List => .List </deferStack>
+
+    rule [TexecAllDefersEmpty]: <k>
+        execAllDefers() => .
+    ... </k>
+    <deferStack> .List </deferStack>
+
 
 
 // type assertion

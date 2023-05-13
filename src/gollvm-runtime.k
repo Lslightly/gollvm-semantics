@@ -50,7 +50,9 @@ module GOLLVM-RUNTIME-SYNTAX
                     |deferproc(GlobalName, ValueRef)
                     //  deferprocStack(d *_defer, pfn uintptr, arg unsafe.Pointer)
                     //  会将arg存储到d中，所以理论上arg在堆上也没有问题
-                    |deferprocStack(ValueRef, GlobalName, ValueRef)
+                    |deferprocStack(ValueRef, GlobalName, ParamFactor)
+                    //  依次执行defer栈上的内容
+                    |deferreturn()
 endmodule
 
 /*
@@ -231,13 +233,22 @@ module RUNTIME-PREPROCESS
                         _:Type _:ParamAttrs D:ValueRef, // d *_defer
                         _:ParamFactor,  //  frame *bool
                         _:Type _:ParamAttrs Pfn:ValueRef, // pfn uintptr
-                        _:Type _:ParamAttrs Arg:ValueRef, // arg unsafe.Pointer
+                        Arg:ParamFactor, // arg unsafe.Pointer
             NormalLabel:LabelString , _:LabelString)
     =>
         deferprocStack(D, extractGlobalName(Pfn), Arg) ~> evalBlock(NormalLabel)
     ... </k>
         <lastBlock> _ => CurrBB </lastBlock>
         <currBlock> CurrBB </currBlock>
+    
+    rule <k>
+        VoidInvoke (@runtime.deferreturn,
+                        _:ParamFactor,  //  undef
+                        _:ParamFactor,  //  frame *bool
+            NormalLabel:LabelString, _:LabelString)
+    =>
+        deferreturn() ~> evalBlock(NormalLabel)
+    ... </k>
 
 endmodule
 
@@ -396,11 +407,15 @@ module GOLLVM-RUNTIME
     ... </k> requires eqtype(ToTD, getTDFromTab(FromTab))
 
     rule [TdeferprocStack]: <k>
-        deferprocStack(D:LocalName, Fn:GlobalName, Arg:LocalName)
+        deferprocStack(D:LocalName, Fn:GlobalName, _:Type _:ParamAttrs ArgName:LocalName #as Arg)
     =>
         pushDeferStack(defer(Fn, Arg))
     ~>  updateObjListAtLocalV (D, 4, Fn)
-    ~>  updateObjListAtLocalV (D, 5, baseOffsetOf(Arg))
+    ~>  updateObjListAtLocalV (D, 5, baseOffsetOf(ArgName))
+    ... </k>
+
+    rule [Tdeferreturn]: <k>
+        deferreturn() => execAllDefers()
     ... </k>
 
 endmodule

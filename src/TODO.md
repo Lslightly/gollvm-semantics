@@ -116,4 +116,9 @@ Constant也放入mem中
 
 - [ ] 给search的例子，需要能体现未知情况下也能进行搜索
 
-- [ ] 添加deferreturn支持
+- [X] 添加deferreturn支持
+  - [X] deferprocStack arg需要添加类型构成完整参数
+  - [ ] deferreturn函数传参给thunk函数时第一个参数未知是否为undef
+- [ ] mapaccess
+
+- [ ] 在未建模call函数error中添加参数对应的值

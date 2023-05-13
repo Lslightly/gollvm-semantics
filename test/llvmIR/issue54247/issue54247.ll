@@ -114,9 +114,8 @@ module asm "\09.ascii \22 \22"
 module asm "\09.ascii \22...\22"
 module asm "\09.ascii \22<type 4>\22"
 module asm "\09.ascii \22)\22"
-module asm "\09.ascii \22 <inl:61>\\n\22"
-module asm "\09.ascii \22 // /home/lqw/semantic/gollvm-semantic/test/issue54247.go:22\\n\22"
-module asm "\09.ascii \22checksum 4D6A66D1E6A95E7564F5E1678A815A400821746D\\n\22"
+module asm "\09.ascii \22\\n\22"
+module asm "\09.ascii \22checksum D335C7B7CB1D02478560A82513E2205C7920628F\\n\22"
 module asm "\09.text"
 
 %StructType.0 = type { %_type.0, %IPST.11 }
@@ -284,9 +283,10 @@ finret.0:                                         ; preds = %cont.2, %cont.0
 
 declare i32 @__gccgo_personality_v0(i32, i32, i64, i8*, i8*)
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind readnone willreturn
-define internal void @main.go..thunk0(i8* nest nocapture %nest.9, { { %functionDescriptor.0**, i64, i64 } }* nocapture %__go_thunk_parameter) #1 {
+define internal void @main.go..thunk0(i8* nest nocapture readnone %nest.9, { { %functionDescriptor.0**, i64, i64 } }* nocapture readonly %__go_thunk_parameter) #0 {
 entry:
+  %field.12 = getelementptr inbounds { { %functionDescriptor.0**, i64, i64 } }, { { %functionDescriptor.0**, i64, i64 } }* %__go_thunk_parameter, i64 0, i32 0
+  call void @main.Recover(i8* nest undef, { %functionDescriptor.0**, i64, i64 }* byval({ %functionDescriptor.0**, i64, i64 }) %field.12)
   ret void
 }
 
@@ -296,11 +296,52 @@ declare void @runtime.checkdefer(i8*, i8*) local_unnamed_addr #0
 
 declare void @runtime.deferreturn(i8*, i8*) local_unnamed_addr #0
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind readnone willreturn
-define void @main.Recover(i8* nest nocapture %nest.3, { %functionDescriptor.0**, i64, i64 }* nocapture byval({ %functionDescriptor.0**, i64, i64 }) %objs) #1 {
+; Function Attrs: noinline
+define void @main.Recover(i8* nest nocapture readnone %nest.3, { %functionDescriptor.0**, i64, i64 }* nocapture readonly byval({ %functionDescriptor.0**, i64, i64 }) %objs) #1 {
 entry:
+  %field.4 = getelementptr inbounds { %functionDescriptor.0**, i64, i64 }, { %functionDescriptor.0**, i64, i64 }* %objs, i64 0, i32 1
+  %objs.field.ld.0 = load i64, i64* %field.4, align 8
+  %icmp.2 = icmp sgt i64 %objs.field.ld.0, 0
+  br i1 %icmp.2, label %fallthrough.0, label %else.0
+
+fallthrough.0:                                    ; preds = %entry
+  %field.6 = getelementptr inbounds { %functionDescriptor.0**, i64, i64 }, { %functionDescriptor.0**, i64, i64 }* %objs, i64 0, i32 0
+  %objs.field.ld.2 = load %functionDescriptor.0**, %functionDescriptor.0*** %field.6, align 8
+  %.ptroff.ld.0 = load %functionDescriptor.0*, %functionDescriptor.0** %objs.field.ld.2, align 8
+  %icmp.3 = icmp eq %functionDescriptor.0* %.ptroff.ld.0, null
+  br i1 %icmp.3, label %then.1, label %else.1, !make.implicit !3
+
+else.0:                                           ; preds = %entry
+  call void @runtime.goPanicIndex(i8* nest undef, i64 0, i64 %objs.field.ld.0)
+  unreachable
+
+then.1:                                           ; preds = %fallthrough.0
+  call void @runtime.panicmem(i8* nest undef)
+  unreachable
+
+else.1:                                           ; preds = %fallthrough.0
+  %field.7 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %.ptroff.ld.0, i64 0, i32 0
+  %.field.ld.0 = load i64, i64* %field.7, align 8
+  call void @runtime.printlock(i8* nest undef)
+  call void @runtime.printint(i8* nest undef, i64 %.field.ld.0)
+  call void @runtime.printnl(i8* nest undef)
+  call void @runtime.printunlock(i8* nest undef)
   ret void
 }
+
+; Function Attrs: noreturn
+declare void @runtime.goPanicIndex(i8*, i64, i64) local_unnamed_addr #2
+
+; Function Attrs: noreturn
+declare void @runtime.panicmem(i8*) local_unnamed_addr #2
+
+declare void @runtime.printlock(i8*) local_unnamed_addr #0
+
+declare void @runtime.printint(i8*, i64) local_unnamed_addr #0
+
+declare void @runtime.printnl(i8*) local_unnamed_addr #0
+
+declare void @runtime.printunlock(i8*) local_unnamed_addr #0
 
 define void @main.main..init0(i8* nest nocapture readnone %nest.4) #0 {
 entry:
@@ -312,47 +353,44 @@ declare void @runtime.setmodinfo(i8*, i8*, i64) local_unnamed_addr #0
 
 define i8 @main.struct_4runtime_0gList_cruntime_0n_bint32_5..eq(i8* nest nocapture readnone %nest.10, i8* readonly %key1, i8* readonly %key2) #0 {
 entry:
-  %icmp.5 = icmp eq i8* %key1, null
-  br i1 %icmp.5, label %then.5, label %else.5, !make.implicit !3
+  %icmp.8 = icmp eq i8* %key1, null
+  br i1 %icmp.8, label %then.7, label %else.7, !make.implicit !3
 
-then.5:                                           ; preds = %entry
+then.7:                                           ; preds = %entry
   call void @runtime.panicmem(i8* nest undef)
   unreachable
 
-else.5:                                           ; preds = %entry
-  %icmp.6 = icmp eq i8* %key2, null
-  br i1 %icmp.6, label %then.6, label %else.6, !make.implicit !3
+else.7:                                           ; preds = %entry
+  %icmp.9 = icmp eq i8* %key2, null
+  br i1 %icmp.9, label %then.8, label %else.8, !make.implicit !3
 
-then.6:                                           ; preds = %else.5
+then.8:                                           ; preds = %else.7
   call void @runtime.panicmem(i8* nest undef)
   unreachable
 
-else.6:                                           ; preds = %else.5
-  %tmpv.14.sroa.0.0.cast.30.sroa_idx = bitcast i8* %key1 to i64*
-  %tmpv.14.sroa.0.0.copyload = load i64, i64* %tmpv.14.sroa.0.0.cast.30.sroa_idx, align 8
-  %tmpv.15.sroa.0.0.cast.35.sroa_idx = bitcast i8* %key2 to i64*
-  %tmpv.15.sroa.0.0.copyload = load i64, i64* %tmpv.15.sroa.0.0.cast.35.sroa_idx, align 8
-  %icmp.7.not = icmp eq i64 %tmpv.14.sroa.0.0.copyload, %tmpv.15.sroa.0.0.copyload
-  br i1 %icmp.7.not, label %else.9, label %common.ret
+else.8:                                           ; preds = %else.7
+  %tmpv.19.sroa.0.0.cast.31.sroa_idx = bitcast i8* %key1 to i64*
+  %tmpv.19.sroa.0.0.copyload = load i64, i64* %tmpv.19.sroa.0.0.cast.31.sroa_idx, align 8
+  %tmpv.20.sroa.0.0.cast.36.sroa_idx = bitcast i8* %key2 to i64*
+  %tmpv.20.sroa.0.0.copyload = load i64, i64* %tmpv.20.sroa.0.0.cast.36.sroa_idx, align 8
+  %icmp.10.not = icmp eq i64 %tmpv.19.sroa.0.0.copyload, %tmpv.20.sroa.0.0.copyload
+  br i1 %icmp.10.not, label %else.11, label %common.ret
 
-common.ret:                                       ; preds = %else.9, %else.6
-  %common.ret.op = phi i8 [ 0, %else.6 ], [ %., %else.9 ]
+common.ret:                                       ; preds = %else.11, %else.8
+  %common.ret.op = phi i8 [ 0, %else.8 ], [ %., %else.11 ]
   ret i8 %common.ret.op
 
-else.9:                                           ; preds = %else.6
-  %field.13 = getelementptr inbounds i8, i8* %key1, i64 8
-  %0 = bitcast i8* %field.13 to i32*
-  %.field.ld.0 = load i32, i32* %0, align 4
-  %field.14 = getelementptr inbounds i8, i8* %key2, i64 8
-  %1 = bitcast i8* %field.14 to i32*
-  %.field.ld.1 = load i32, i32* %1, align 4
-  %icmp.11.not = icmp eq i32 %.field.ld.0, %.field.ld.1
-  %. = zext i1 %icmp.11.not to i8
+else.11:                                          ; preds = %else.8
+  %field.17 = getelementptr inbounds i8, i8* %key1, i64 8
+  %0 = bitcast i8* %field.17 to i32*
+  %.field.ld.1 = load i32, i32* %0, align 4
+  %field.18 = getelementptr inbounds i8, i8* %key2, i64 8
+  %1 = bitcast i8* %field.18 to i32*
+  %.field.ld.2 = load i32, i32* %1, align 4
+  %icmp.14.not = icmp eq i32 %.field.ld.1, %.field.ld.2
+  %. = zext i1 %icmp.14.not to i8
   br label %common.ret
 }
-
-; Function Attrs: noreturn
-declare void @runtime.panicmem(i8*) local_unnamed_addr #2
 
 ; Function Attrs: nofree readonly
 define i8 @main._632_7uintptr..eq(i8* nest nocapture readnone %nest.11, i8* readonly %key1, i8* readonly %key2) #3 {
@@ -373,102 +411,102 @@ entry:
 
 define i8 @main._661_7struct_4Size_buint32_cMallocs_buint64_cFrees_buint64_5..eq(i8* nest nocapture readnone %nest.13, i8* readonly %key1, i8* readonly %key2) #0 {
 entry:
-  %cast.40 = bitcast i8* %key1 to [61 x { i32, i64, i64 }]*
-  %cast.41 = bitcast i8* %key2 to [61 x { i32, i64, i64 }]*
-  %icmp.14 = icmp eq i8* %key1, null
-  br i1 %icmp.14, label %then.13.split, label %entry.split, !make.implicit !3
+  %cast.41 = bitcast i8* %key1 to [61 x { i32, i64, i64 }]*
+  %cast.42 = bitcast i8* %key2 to [61 x { i32, i64, i64 }]*
+  %icmp.17 = icmp eq i8* %key1, null
+  br i1 %icmp.17, label %then.15.split, label %entry.split, !make.implicit !3
 
 entry.split:                                      ; preds = %entry
-  %icmp.17 = icmp eq i8* %key2, null
-  br i1 %icmp.17, label %then.15.split, label %then.19, !make.implicit !3
+  %icmp.20 = icmp eq i8* %key2, null
+  br i1 %icmp.20, label %then.17.split, label %then.21, !make.implicit !3
 
-label.0:                                          ; preds = %then.19
-  %add.0 = add nuw nsw i64 %tmpv.28.018, 1
+label.0:                                          ; preds = %then.21
+  %add.0 = add nuw nsw i64 %tmpv.33.018, 1
   %exitcond.not = icmp eq i64 %add.0, 61
-  br i1 %exitcond.not, label %common.ret, label %then.19
+  br i1 %exitcond.not, label %common.ret, label %then.21
 
-then.13.split:                                    ; preds = %entry
+then.15.split:                                    ; preds = %entry
   call void @runtime.panicmem(i8* nest undef)
   unreachable
 
-then.15.split:                                    ; preds = %entry.split
+then.17.split:                                    ; preds = %entry.split
   call void @runtime.panicmem(i8* nest undef)
   unreachable
 
-common.ret:                                       ; preds = %then.19, %label.0
-  %common.ret.op = phi i8 [ 0, %then.19 ], [ 1, %label.0 ]
+common.ret:                                       ; preds = %then.21, %label.0
+  %common.ret.op = phi i8 [ 0, %then.21 ], [ 1, %label.0 ]
   ret i8 %common.ret.op
 
-then.19:                                          ; preds = %label.0, %entry.split
-  %tmpv.28.018 = phi i64 [ %add.0, %label.0 ], [ 0, %entry.split ]
-  %tmpv.30.sroa.4.0.cast.44.sroa_idx7 = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.40, i64 0, i64 %tmpv.28.018, i32 2
-  %tmpv.30.sroa.4.0.copyload = load i64, i64* %tmpv.30.sroa.4.0.cast.44.sroa_idx7, align 8
-  %tmpv.30.sroa.3.0.cast.44.sroa_idx6 = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.40, i64 0, i64 %tmpv.28.018, i32 1
-  %tmpv.30.sroa.3.0.copyload = load i64, i64* %tmpv.30.sroa.3.0.cast.44.sroa_idx6, align 8
-  %tmpv.30.sroa.0.0.cast.44.sroa_idx = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.40, i64 0, i64 %tmpv.28.018, i32 0
-  %tmpv.30.sroa.0.0.copyload = load i32, i32* %tmpv.30.sroa.0.0.cast.44.sroa_idx, align 8
-  %tmpv.31.sroa.0.0.cast.49.sroa_idx = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.41, i64 0, i64 %tmpv.28.018, i32 0
-  %tmpv.31.sroa.0.0.copyload = load i32, i32* %tmpv.31.sroa.0.0.cast.49.sroa_idx, align 8
-  %tmpv.31.sroa.3.0.cast.49.sroa_idx4 = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.41, i64 0, i64 %tmpv.28.018, i32 1
-  %tmpv.31.sroa.3.0.copyload = load i64, i64* %tmpv.31.sroa.3.0.cast.49.sroa_idx4, align 8
-  %tmpv.31.sroa.4.0.cast.49.sroa_idx5 = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.41, i64 0, i64 %tmpv.28.018, i32 2
-  %tmpv.31.sroa.4.0.copyload = load i64, i64* %tmpv.31.sroa.4.0.cast.49.sroa_idx5, align 8
-  %icmp.18 = icmp eq i32 %tmpv.30.sroa.0.0.copyload, %tmpv.31.sroa.0.0.copyload
-  %icmp.19 = icmp eq i64 %tmpv.30.sroa.3.0.copyload, %tmpv.31.sroa.3.0.copyload
-  %tmpv.37.0.in = select i1 %icmp.18, i1 %icmp.19, i1 false
-  %icmp.20 = icmp eq i64 %tmpv.30.sroa.4.0.copyload, %tmpv.31.sroa.4.0.copyload
-  %tmpv.38.0.in = select i1 %tmpv.37.0.in, i1 %icmp.20, i1 false
-  br i1 %tmpv.38.0.in, label %label.0, label %common.ret
+then.21:                                          ; preds = %label.0, %entry.split
+  %tmpv.33.018 = phi i64 [ %add.0, %label.0 ], [ 0, %entry.split ]
+  %tmpv.35.sroa.4.0.cast.45.sroa_idx7 = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.41, i64 0, i64 %tmpv.33.018, i32 2
+  %tmpv.35.sroa.4.0.copyload = load i64, i64* %tmpv.35.sroa.4.0.cast.45.sroa_idx7, align 8
+  %tmpv.35.sroa.3.0.cast.45.sroa_idx6 = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.41, i64 0, i64 %tmpv.33.018, i32 1
+  %tmpv.35.sroa.3.0.copyload = load i64, i64* %tmpv.35.sroa.3.0.cast.45.sroa_idx6, align 8
+  %tmpv.35.sroa.0.0.cast.45.sroa_idx = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.41, i64 0, i64 %tmpv.33.018, i32 0
+  %tmpv.35.sroa.0.0.copyload = load i32, i32* %tmpv.35.sroa.0.0.cast.45.sroa_idx, align 8
+  %tmpv.36.sroa.0.0.cast.50.sroa_idx = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.42, i64 0, i64 %tmpv.33.018, i32 0
+  %tmpv.36.sroa.0.0.copyload = load i32, i32* %tmpv.36.sroa.0.0.cast.50.sroa_idx, align 8
+  %tmpv.36.sroa.3.0.cast.50.sroa_idx4 = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.42, i64 0, i64 %tmpv.33.018, i32 1
+  %tmpv.36.sroa.3.0.copyload = load i64, i64* %tmpv.36.sroa.3.0.cast.50.sroa_idx4, align 8
+  %tmpv.36.sroa.4.0.cast.50.sroa_idx5 = getelementptr [61 x { i32, i64, i64 }], [61 x { i32, i64, i64 }]* %cast.42, i64 0, i64 %tmpv.33.018, i32 2
+  %tmpv.36.sroa.4.0.copyload = load i64, i64* %tmpv.36.sroa.4.0.cast.50.sroa_idx5, align 8
+  %icmp.21 = icmp eq i32 %tmpv.35.sroa.0.0.copyload, %tmpv.36.sroa.0.0.copyload
+  %icmp.22 = icmp eq i64 %tmpv.35.sroa.3.0.copyload, %tmpv.36.sroa.3.0.copyload
+  %tmpv.42.0.in = select i1 %icmp.21, i1 %icmp.22, i1 false
+  %icmp.23 = icmp eq i64 %tmpv.35.sroa.4.0.copyload, %tmpv.36.sroa.4.0.copyload
+  %tmpv.43.0.in = select i1 %tmpv.42.0.in, i1 %icmp.23, i1 false
+  br i1 %tmpv.43.0.in, label %label.0, label %common.ret
 }
 
 define i8 @main.struct_4Size_buint32_cMallocs_buint64_cFrees_buint64_5..eq(i8* nest nocapture readnone %nest.14, i8* readonly %key1, i8* readonly %key2) #0 {
 entry:
-  %icmp.23 = icmp eq i8* %key1, null
-  br i1 %icmp.23, label %then.20, label %else.20, !make.implicit !3
+  %icmp.26 = icmp eq i8* %key1, null
+  br i1 %icmp.26, label %then.22, label %else.22, !make.implicit !3
 
-then.20:                                          ; preds = %entry
+then.22:                                          ; preds = %entry
   call void @runtime.panicmem(i8* nest undef)
   unreachable
 
-else.20:                                          ; preds = %entry
-  %icmp.24 = icmp eq i8* %key2, null
-  br i1 %icmp.24, label %then.21, label %else.21, !make.implicit !3
+else.22:                                          ; preds = %entry
+  %icmp.27 = icmp eq i8* %key2, null
+  br i1 %icmp.27, label %then.23, label %else.23, !make.implicit !3
 
-then.21:                                          ; preds = %else.20
+then.23:                                          ; preds = %else.22
   call void @runtime.panicmem(i8* nest undef)
   unreachable
 
-else.21:                                          ; preds = %else.20
-  %field.21 = bitcast i8* %key1 to i32*
-  %.field.ld.2 = load i32, i32* %field.21, align 4
-  %field.22 = bitcast i8* %key2 to i32*
-  %.field.ld.3 = load i32, i32* %field.22, align 4
-  %icmp.25.not = icmp eq i32 %.field.ld.2, %.field.ld.3
-  br i1 %icmp.25.not, label %else.24, label %common.ret
+else.23:                                          ; preds = %else.22
+  %field.25 = bitcast i8* %key1 to i32*
+  %.field.ld.3 = load i32, i32* %field.25, align 4
+  %field.26 = bitcast i8* %key2 to i32*
+  %.field.ld.4 = load i32, i32* %field.26, align 4
+  %icmp.28.not = icmp eq i32 %.field.ld.3, %.field.ld.4
+  br i1 %icmp.28.not, label %else.26, label %common.ret
 
-common.ret:                                       ; preds = %else.27, %else.24, %else.21
-  %common.ret.op = phi i8 [ 0, %else.21 ], [ 0, %else.24 ], [ %., %else.27 ]
+common.ret:                                       ; preds = %else.29, %else.26, %else.23
+  %common.ret.op = phi i8 [ 0, %else.23 ], [ 0, %else.26 ], [ %., %else.29 ]
   ret i8 %common.ret.op
 
-else.24:                                          ; preds = %else.21
-  %field.23 = getelementptr inbounds i8, i8* %key1, i64 8
-  %0 = bitcast i8* %field.23 to i64*
-  %.field.ld.4 = load i64, i64* %0, align 8
-  %field.24 = getelementptr inbounds i8, i8* %key2, i64 8
-  %1 = bitcast i8* %field.24 to i64*
-  %.field.ld.5 = load i64, i64* %1, align 8
-  %icmp.28.not = icmp eq i64 %.field.ld.4, %.field.ld.5
-  br i1 %icmp.28.not, label %else.27, label %common.ret
+else.26:                                          ; preds = %else.23
+  %field.27 = getelementptr inbounds i8, i8* %key1, i64 8
+  %0 = bitcast i8* %field.27 to i64*
+  %.field.ld.5 = load i64, i64* %0, align 8
+  %field.28 = getelementptr inbounds i8, i8* %key2, i64 8
+  %1 = bitcast i8* %field.28 to i64*
+  %.field.ld.6 = load i64, i64* %1, align 8
+  %icmp.31.not = icmp eq i64 %.field.ld.5, %.field.ld.6
+  br i1 %icmp.31.not, label %else.29, label %common.ret
 
-else.27:                                          ; preds = %else.24
-  %field.25 = getelementptr inbounds i8, i8* %key1, i64 16
-  %2 = bitcast i8* %field.25 to i64*
-  %.field.ld.6 = load i64, i64* %2, align 8
-  %field.26 = getelementptr inbounds i8, i8* %key2, i64 16
-  %3 = bitcast i8* %field.26 to i64*
-  %.field.ld.7 = load i64, i64* %3, align 8
-  %icmp.31.not = icmp eq i64 %.field.ld.6, %.field.ld.7
-  %. = zext i1 %icmp.31.not to i8
+else.29:                                          ; preds = %else.26
+  %field.29 = getelementptr inbounds i8, i8* %key1, i64 16
+  %2 = bitcast i8* %field.29 to i64*
+  %.field.ld.7 = load i64, i64* %2, align 8
+  %field.30 = getelementptr inbounds i8, i8* %key2, i64 16
+  %3 = bitcast i8* %field.30 to i64*
+  %.field.ld.8 = load i64, i64* %3, align 8
+  %icmp.34.not = icmp eq i64 %.field.ld.7, %.field.ld.8
+  %. = zext i1 %icmp.34.not to i8
   br label %common.ret
 }
 
@@ -509,55 +547,55 @@ entry:
 
 define i8 @main._633_7float64..eq(i8* nest nocapture readnone %nest.20, i8* readonly %key1, i8* readonly %key2) #0 {
 entry:
-  %cast.60 = bitcast i8* %key1 to [33 x double]*
-  %cast.61 = bitcast i8* %key2 to [33 x double]*
-  %icmp.36 = icmp eq i8* %key1, null
-  br i1 %icmp.36, label %then.31.split, label %entry.split, !make.implicit !3
+  %cast.61 = bitcast i8* %key1 to [33 x double]*
+  %cast.62 = bitcast i8* %key2 to [33 x double]*
+  %icmp.39 = icmp eq i8* %key1, null
+  br i1 %icmp.39, label %then.33.split, label %entry.split, !make.implicit !3
 
 entry.split:                                      ; preds = %entry
-  %icmp.37 = icmp eq i8* %key2, null
-  br i1 %icmp.37, label %then.32.split, label %then.34, !make.implicit !3
+  %icmp.40 = icmp eq i8* %key2, null
+  br i1 %icmp.40, label %then.34.split, label %then.36, !make.implicit !3
 
-label.0:                                          ; preds = %then.34
-  %add.1 = add nuw nsw i64 %tmpv.55.011, 1
-  %index.3.1 = getelementptr [33 x double], [33 x double]* %cast.60, i64 0, i64 %add.1
+label.0:                                          ; preds = %then.36
+  %add.1 = add nuw nsw i64 %tmpv.60.011, 1
+  %index.3.1 = getelementptr [33 x double], [33 x double]* %cast.61, i64 0, i64 %add.1
   %.index.ld.0.1 = load double, double* %index.3.1, align 8
-  %index.4.1 = getelementptr [33 x double], [33 x double]* %cast.61, i64 0, i64 %add.1
+  %index.4.1 = getelementptr [33 x double], [33 x double]* %cast.62, i64 0, i64 %add.1
   %.index.ld.1.1 = load double, double* %index.4.1, align 8
   %fcmp.0.1 = fcmp une double %.index.ld.0.1, %.index.ld.1.1
   br i1 %fcmp.0.1, label %common.ret, label %label.0.1
 
 label.0.1:                                        ; preds = %label.0
-  %add.1.1 = add nuw nsw i64 %tmpv.55.011, 2
-  %index.3.2 = getelementptr [33 x double], [33 x double]* %cast.60, i64 0, i64 %add.1.1
+  %add.1.1 = add nuw nsw i64 %tmpv.60.011, 2
+  %index.3.2 = getelementptr [33 x double], [33 x double]* %cast.61, i64 0, i64 %add.1.1
   %.index.ld.0.2 = load double, double* %index.3.2, align 8
-  %index.4.2 = getelementptr [33 x double], [33 x double]* %cast.61, i64 0, i64 %add.1.1
+  %index.4.2 = getelementptr [33 x double], [33 x double]* %cast.62, i64 0, i64 %add.1.1
   %.index.ld.1.2 = load double, double* %index.4.2, align 8
   %fcmp.0.2 = fcmp une double %.index.ld.0.2, %.index.ld.1.2
   br i1 %fcmp.0.2, label %common.ret, label %label.0.2
 
 label.0.2:                                        ; preds = %label.0.1
-  %add.1.2 = add nuw nsw i64 %tmpv.55.011, 3
+  %add.1.2 = add nuw nsw i64 %tmpv.60.011, 3
   %exitcond.not.2 = icmp eq i64 %add.1.2, 33
-  br i1 %exitcond.not.2, label %common.ret, label %then.34
+  br i1 %exitcond.not.2, label %common.ret, label %then.36
 
-then.31.split:                                    ; preds = %entry
+then.33.split:                                    ; preds = %entry
   call void @runtime.panicmem(i8* nest undef)
   unreachable
 
-then.32.split:                                    ; preds = %entry.split
+then.34.split:                                    ; preds = %entry.split
   call void @runtime.panicmem(i8* nest undef)
   unreachable
 
-common.ret:                                       ; preds = %then.34, %label.0.2, %label.0.1, %label.0
-  %common.ret.op = phi i8 [ 0, %then.34 ], [ 0, %label.0 ], [ 0, %label.0.1 ], [ 1, %label.0.2 ]
+common.ret:                                       ; preds = %then.36, %label.0.2, %label.0.1, %label.0
+  %common.ret.op = phi i8 [ 0, %then.36 ], [ 0, %label.0 ], [ 0, %label.0.1 ], [ 1, %label.0.2 ]
   ret i8 %common.ret.op
 
-then.34:                                          ; preds = %label.0.2, %entry.split
-  %tmpv.55.011 = phi i64 [ %add.1.2, %label.0.2 ], [ 0, %entry.split ]
-  %index.3 = getelementptr [33 x double], [33 x double]* %cast.60, i64 0, i64 %tmpv.55.011
+then.36:                                          ; preds = %label.0.2, %entry.split
+  %tmpv.60.011 = phi i64 [ %add.1.2, %label.0.2 ], [ 0, %entry.split ]
+  %index.3 = getelementptr [33 x double], [33 x double]* %cast.61, i64 0, i64 %tmpv.60.011
   %.index.ld.0 = load double, double* %index.3, align 8
-  %index.4 = getelementptr [33 x double], [33 x double]* %cast.61, i64 0, i64 %tmpv.55.011
+  %index.4 = getelementptr [33 x double], [33 x double]* %cast.62, i64 0, i64 %tmpv.60.011
   %.index.ld.1 = load double, double* %index.4, align 8
   %fcmp.0 = fcmp une double %.index.ld.0, %.index.ld.1
   br i1 %fcmp.0, label %common.ret, label %label.0
@@ -614,53 +652,53 @@ entry:
 
 define i8 @main._627_7string..eq(i8* nest nocapture readnone %nest.28, i8* readonly %key1, i8* readonly %key2) #0 {
 entry:
-  %cast.64 = bitcast i8* %key1 to [27 x { i8*, i64 }]*
-  %cast.65 = bitcast i8* %key2 to [27 x { i8*, i64 }]*
-  %icmp.43 = icmp eq i8* %key1, null
-  br i1 %icmp.43, label %then.37.split, label %entry.split, !make.implicit !3
+  %cast.65 = bitcast i8* %key1 to [27 x { i8*, i64 }]*
+  %cast.66 = bitcast i8* %key2 to [27 x { i8*, i64 }]*
+  %icmp.46 = icmp eq i8* %key1, null
+  br i1 %icmp.46, label %then.39.split, label %entry.split, !make.implicit !3
 
 entry.split:                                      ; preds = %entry
-  %icmp.44 = icmp eq i8* %key2, null
-  br i1 %icmp.44, label %then.38.split, label %then.42, !make.implicit !3
+  %icmp.47 = icmp eq i8* %key2, null
+  br i1 %icmp.47, label %then.40.split, label %then.44, !make.implicit !3
 
-then.37.split:                                    ; preds = %entry
+then.39.split:                                    ; preds = %entry
   call void @runtime.panicmem(i8* nest undef)
   unreachable
 
-then.38.split:                                    ; preds = %entry.split
+then.40.split:                                    ; preds = %entry.split
   call void @runtime.panicmem(i8* nest undef)
   unreachable
 
-then.39:                                          ; preds = %then.42
-  %icmp.46 = icmp eq i8* %tmpv.71.sroa.0.0.copyload, %tmpv.73.sroa.0.0.copyload
-  br i1 %icmp.46, label %else.41, label %fallthrough.39
+then.41:                                          ; preds = %then.44
+  %icmp.49 = icmp eq i8* %tmpv.76.sroa.0.0.copyload, %tmpv.78.sroa.0.0.copyload
+  br i1 %icmp.49, label %else.43, label %fallthrough.41
 
-fallthrough.39:                                   ; preds = %then.39
-  %call.16 = call i32 @memcmp(i8* %tmpv.71.sroa.0.0.copyload, i8* %tmpv.73.sroa.0.0.copyload, i64 %tmpv.71.sroa.3.0.copyload)
-  %icmp.47 = icmp eq i32 %call.16, 0
-  br i1 %icmp.47, label %else.41, label %common.ret
+fallthrough.41:                                   ; preds = %then.41
+  %call.16 = call i32 @memcmp(i8* %tmpv.76.sroa.0.0.copyload, i8* %tmpv.78.sroa.0.0.copyload, i64 %tmpv.76.sroa.3.0.copyload)
+  %icmp.50 = icmp eq i32 %call.16, 0
+  br i1 %icmp.50, label %else.43, label %common.ret
 
-common.ret:                                       ; preds = %then.42, %else.41, %fallthrough.39
-  %common.ret.op = phi i8 [ 0, %fallthrough.39 ], [ 1, %else.41 ], [ 0, %then.42 ]
+common.ret:                                       ; preds = %then.44, %else.43, %fallthrough.41
+  %common.ret.op = phi i8 [ 0, %fallthrough.41 ], [ 1, %else.43 ], [ 0, %then.44 ]
   ret i8 %common.ret.op
 
-else.41:                                          ; preds = %fallthrough.39, %then.39
-  %add.2 = add nuw nsw i64 %tmpv.69.019, 1
+else.43:                                          ; preds = %fallthrough.41, %then.41
+  %add.2 = add nuw nsw i64 %tmpv.74.019, 1
   %exitcond.not = icmp eq i64 %add.2, 27
-  br i1 %exitcond.not, label %common.ret, label %then.42
+  br i1 %exitcond.not, label %common.ret, label %then.44
 
-then.42:                                          ; preds = %else.41, %entry.split
-  %tmpv.69.019 = phi i64 [ %add.2, %else.41 ], [ 0, %entry.split ]
-  %tmpv.71.sroa.0.0.cast.68.sroa_idx = getelementptr [27 x { i8*, i64 }], [27 x { i8*, i64 }]* %cast.64, i64 0, i64 %tmpv.69.019, i32 0
-  %tmpv.71.sroa.0.0.copyload = load i8*, i8** %tmpv.71.sroa.0.0.cast.68.sroa_idx, align 8
-  %tmpv.71.sroa.3.0.cast.68.sroa_idx3 = getelementptr [27 x { i8*, i64 }], [27 x { i8*, i64 }]* %cast.64, i64 0, i64 %tmpv.69.019, i32 1
-  %tmpv.71.sroa.3.0.copyload = load i64, i64* %tmpv.71.sroa.3.0.cast.68.sroa_idx3, align 8
-  %tmpv.73.sroa.0.0.cast.71.sroa_idx = getelementptr [27 x { i8*, i64 }], [27 x { i8*, i64 }]* %cast.65, i64 0, i64 %tmpv.69.019, i32 0
-  %tmpv.73.sroa.0.0.copyload = load i8*, i8** %tmpv.73.sroa.0.0.cast.71.sroa_idx, align 8
-  %tmpv.73.sroa.3.0.cast.71.sroa_idx1 = getelementptr [27 x { i8*, i64 }], [27 x { i8*, i64 }]* %cast.65, i64 0, i64 %tmpv.69.019, i32 1
-  %tmpv.73.sroa.3.0.copyload = load i64, i64* %tmpv.73.sroa.3.0.cast.71.sroa_idx1, align 8
-  %icmp.45 = icmp eq i64 %tmpv.71.sroa.3.0.copyload, %tmpv.73.sroa.3.0.copyload
-  br i1 %icmp.45, label %then.39, label %common.ret
+then.44:                                          ; preds = %else.43, %entry.split
+  %tmpv.74.019 = phi i64 [ %add.2, %else.43 ], [ 0, %entry.split ]
+  %tmpv.76.sroa.0.0.cast.69.sroa_idx = getelementptr [27 x { i8*, i64 }], [27 x { i8*, i64 }]* %cast.65, i64 0, i64 %tmpv.74.019, i32 0
+  %tmpv.76.sroa.0.0.copyload = load i8*, i8** %tmpv.76.sroa.0.0.cast.69.sroa_idx, align 8
+  %tmpv.76.sroa.3.0.cast.69.sroa_idx3 = getelementptr [27 x { i8*, i64 }], [27 x { i8*, i64 }]* %cast.65, i64 0, i64 %tmpv.74.019, i32 1
+  %tmpv.76.sroa.3.0.copyload = load i64, i64* %tmpv.76.sroa.3.0.cast.69.sroa_idx3, align 8
+  %tmpv.78.sroa.0.0.cast.72.sroa_idx = getelementptr [27 x { i8*, i64 }], [27 x { i8*, i64 }]* %cast.66, i64 0, i64 %tmpv.74.019, i32 0
+  %tmpv.78.sroa.0.0.copyload = load i8*, i8** %tmpv.78.sroa.0.0.cast.72.sroa_idx, align 8
+  %tmpv.78.sroa.3.0.cast.72.sroa_idx1 = getelementptr [27 x { i8*, i64 }], [27 x { i8*, i64 }]* %cast.66, i64 0, i64 %tmpv.74.019, i32 1
+  %tmpv.78.sroa.3.0.copyload = load i64, i64* %tmpv.78.sroa.3.0.cast.72.sroa_idx1, align 8
+  %icmp.48 = icmp eq i64 %tmpv.76.sroa.3.0.copyload, %tmpv.78.sroa.3.0.copyload
+  br i1 %icmp.48, label %then.41, label %common.ret
 }
 
 ; Function Attrs: argmemonly mustprogress nofree nounwind readonly willreturn
@@ -724,16 +762,8 @@ entry:
   ret void
 }
 
-declare void @runtime.printlock(i8*) local_unnamed_addr #0
-
-declare void @runtime.printint(i8*, i64) local_unnamed_addr #0
-
-declare void @runtime.printnl(i8*) local_unnamed_addr #0
-
-declare void @runtime.printunlock(i8*) local_unnamed_addr #0
-
 attributes #0 = { "disable-tail-calls"="true" "frame-pointer"="none" "null-pointer-is-valid"="true" "split-stack" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" }
-attributes #1 = { mustprogress nofree norecurse nosync nounwind readnone willreturn "disable-tail-calls"="true" "frame-pointer"="none" "null-pointer-is-valid"="true" "split-stack" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" }
+attributes #1 = { noinline "disable-tail-calls"="true" "frame-pointer"="none" "null-pointer-is-valid"="true" "split-stack" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" }
 attributes #2 = { noreturn "disable-tail-calls"="true" "frame-pointer"="none" "null-pointer-is-valid"="true" "split-stack" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" }
 attributes #3 = { nofree readonly "disable-tail-calls"="true" "frame-pointer"="none" "null-pointer-is-valid"="true" "split-stack" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" }
 attributes #4 = { argmemonly nofree readonly "disable-tail-calls"="true" "frame-pointer"="none" "null-pointer-is-valid"="true" "split-stack" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" }
