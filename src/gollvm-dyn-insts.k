@@ -139,6 +139,8 @@ module GOLLVM-DYN-INSTS
     rule getContentFromValueRef (LV:LocalName) => {lookUpPrim (LV)}:>Content requires isPrim(LV)
     rule getContentFromValueRef (GV:GlobalName) => baseOffsetOfGlobalV(GV) 
     rule getContentFromValueRef (V:ConstExpr) => V requires isTypeDescriptor(V)
+    rule getContentFromValueRef (V:ConstExpr) => extractGlobalName(V) requires isDefineFunction (extractGlobalName(V))
+    rule getContentFromValueRef (V:ConstExpr) => getBaseOffsetFromValueRef(V) [owise]
     
 endmodule
 
@@ -218,7 +220,24 @@ module GOLLVM-NORMAL-INSTS
 
     rule [TloadWriteBarrier]: <k> execInst(Dst:LocalName = load _:OptVolatile _:Type , _:Type bitcast ( _:Type @runtime.writeBarrier to _:Type), _:Align _:InstructionMetadatas) => updatePrim (Dst, 1) ...</k> [priority(49)]
 
-    rule [Tload]: <k>
+    /*
+        object中内容Content可能包含
+        地址
+            Address
+            对非函数名称、非类型描述符全局常量GlobalName的cast
+        常量
+            List
+            UnInit
+            NonAddr
+            ValueRef
+                LocalName不可能
+                GlobalName函数名称
+                ConstExpr
+                    对函数名称GlobalName的cast
+                    对类型描述符GlobalName的cast
+        
+    */
+    rule [TloadAddr]: <k>
         execInst (Dst:LocalName = load _:OptVolatile DstType:Type , _:Type Src:LocalName, _:Align _:InstructionMetadatas)
         =>  addrMapInsert(
                 Dst,
@@ -242,12 +261,10 @@ module GOLLVM-NORMAL-INSTS
         => 
             updatePrim(
                 Dst,
-                trimWrapperNonAddr(
-                    readContentAtAddr(
-                        getTypeMatchedBaseOffset(
-                            DstType,
-                            baseOffsetOf(Src)
-                        )
+                readContentAtAddr(
+                    getTypeMatchedBaseOffset(
+                        DstType,
+                        baseOffsetOf(Src)
                     )
                 )
             )
@@ -403,9 +420,7 @@ module GOLLVM-NORMAL-INSTS
     =>
         updatePrim(
             Dst,
-            trimWrapperNonAddr(
-                getContentElemMultiDim({lookUpPrim(Src)}:>List, getConstIdxList(IdxList))
-            )
+            getContentElemMultiDim({lookUpPrim(Src)}:>List, getConstIdxList(IdxList))
         )
     ... </k>
         requires isNonAddrSort(getContentElemMultiDim({lookUpPrim(Src)}:>List, getConstIdxList(IdxList)))

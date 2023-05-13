@@ -85,11 +85,11 @@ module GOLLVM-DYNAMIC
     <params> Params:ArgList </params>
 
     rule [[ getLastFrameLocal2Base() => Local2Base ]]
-    <callStack> _:List ListItem(frame(Local2Base:Map, _:Map, _:Map)) .List</callStack>
+    <callStack> _:List ListItem(frame(Local2Base:Map, _:Map, _:Map, _:List, _:Control)) .List</callStack>
     rule [[ getLastFrameLocal2prim() => Local2prim ]]
-    <callStack> _:List ListItem(frame(_:Map, Local2prim:Map, _:Map)) .List </callStack>
+    <callStack> _:List ListItem(frame(_:Map, Local2prim:Map, _:Map, _:List, _:Control)) .List </callStack>
     rule [[ getLastFrameStackAllocs() => StackAllocs ]]
-    <callStack> _:List ListItem(frame(_:Map, _:Map, StackAllocs:Map)) .List </callStack>
+    <callStack> _:List ListItem(frame(_:Map, _:Map, StackAllocs:Map, _:List, _:Control)) .List </callStack>
     rule inLastFrameLocal2Base(LV:LocalName) => LV in_keys(getLastFrameLocal2Base())
     rule inLastFrameLocal2prim(LV:LocalName) => LV in_keys(getLastFrameLocal2prim())
     rule getLastFrameBaseOffsetOf(LV:LocalName) => {getLastFrameLocal2Base() [ LV ]}:>BaseOffset requires inLastFrameLocal2Base(LV)
@@ -101,7 +101,15 @@ module GOLLVM-DYNAMIC
     <local2Base> AddrMap:Map => .Map </local2Base>
     <local2prim> PrimMap:Map => .Map </local2prim>
     <stackAllocs> StackObjBases:Map => .Map </stackAllocs>
-    <callStack> ... .List => ListItem(frame(AddrMap, PrimMap, StackObjBases))</callStack>
+    <deferStack> DeferStk:List => .List </deferStack>
+    <control>
+        <currFunc> Fn:K </currFunc>
+        <lastBlock> LastBlk:K </lastBlock>
+        <currBlock> Blk:K </currBlock>
+        <currInst> Inst:K </currInst>
+        <instList> InstList:List </instList>
+    </control>
+    <callStack> ... .List => ListItem(frame(AddrMap, PrimMap, StackObjBases, DeferStk, control(Fn, LastBlk, Blk, Inst, InstList)))</callStack>
 
     rule <k>
         restoreStackState() => .
@@ -109,7 +117,15 @@ module GOLLVM-DYNAMIC
     <local2Base> _ => AddrMap </local2Base>
     <local2prim> _ => PrimMap </local2prim>
     <stackAllocs> _ => StackObjBases </stackAllocs>
-    <callStack> ... ListItem(frame(AddrMap:Map, PrimMap:Map, StackObjBases:Map)) .List => .List</callStack>
+    <deferStack> _ => DeferStk </deferStack>
+    <control>
+        <currFunc> _ => Fn </currFunc>
+        <lastBlock> _ => LastBlk </lastBlock>
+        <currBlock> _ => Blk </currBlock>
+        <currInst> _ => Inst </currInst>
+        <instList> _ => InstList </instList>
+    </control>
+    <callStack> ... ListItem(frame(AddrMap:Map, PrimMap:Map, StackObjBases:Map, DeferStk:List, control(Fn, LastBlk, Blk, Inst, InstList))) .List => .List</callStack>
 
     rule <k>
         shorterLifeTime() => .
@@ -149,6 +165,18 @@ module GOLLVM-DYNAMIC
         addrMapInsert(Param, getLastFrameBaseOffsetOf(Arg))
     ... </k>
         requires inLastFrameLocal2Base(Arg)
+    rule <k>
+        mapArgToParam(Arg:ValueRef, Param:LocalVar)
+    =>
+        updatePrim(Param, getContentFromValueRef(Arg))
+    ... </k> requires isNonAddrSort(getContentFromValueRef(Arg))
+    [priority(51)]
+    rule <k>
+        mapArgToParam(Arg:ValueRef, Param:LocalVar)
+    =>
+        addrMapInsert(Param, toAddress(getContentFromValueRef(Arg)))
+    ... </k> requires notBool isNonAddrSort(getContentFromValueRef(Arg))
+    [priority(51)]
 
     rule <k>
         storeReturnV (V:KItem) => .
@@ -171,6 +199,23 @@ module GOLLVM-DYNAMIC
         addrMapInsert(Ret, {getReturnV()}:>BaseOffset)
     ... </k>
         requires notBool isNonAddrSort(getReturnV())
+    
+// defer utility
+    rule <k>
+        pushDeferStack (D:DeferFrame)
+    =>
+        .
+    ... </k>
+        <deferStack> ... .List => ListItem(D) </deferStack>
+    rule <k>
+        popDeferStack()
+    =>
+        D
+    ... </k>
+        <deferStack> ... ListItem(D) .List => .List </deferStack>
+    
+    rule [[ isDefetStackEmpty() => size(Stk) ==Int 0 ]]
+        <deferStack> Stk:List </deferStack>
 
 
 // type assertion

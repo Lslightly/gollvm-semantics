@@ -14,6 +14,9 @@ module GOLLVM-SYNTAX-HELPER-SYNTAX
 // judge whether is the specified format of code
     syntax Bool ::= isGepConst(ValueRef) [function]
                 |   isBitcastConst(ValueRef) [function]
+                //  this would judge whether the valueref is a constant addr
+                |   isConstAddr(ValueRef) [function]
+    
 
     syntax List ::= getConstIdxList(ConstantIndexList) [function]
 
@@ -33,6 +36,10 @@ module GOLLVM-SYNTAX-HELPER
         GV
     rule [TextractGlobalNameGV]:
         extractGlobalName(GV:GlobalName)
+    =>
+        GV
+    rule [TextractGlobalNamePtrToInt]:
+        extractGlobalName (ptrtoint(_:Type GV:GlobalName to _:Type))
     =>
         GV
     

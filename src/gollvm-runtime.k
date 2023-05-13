@@ -41,6 +41,16 @@ module GOLLVM-RUNTIME-SYNTAX
                     |ifaceE2T2P(LocalName, ValueRef, ValueRef, LocalName)
                     //  ifaceI2T2P(RetStruct, ToTD, FromTab, FromData)
                     |ifaceI2T2P(LocalName, ValueRef, ValueRef, LocalName)
+                    //  typedmemmove(TD, DstPtr, SrcPtr)
+                    |typedmemmove(ValueRef, LocalName, LocalName)
+                    //  mapaccess(DstPtr, MapTypeValueRef, Hmap, Key)
+                    |mapaccess1(LocalName, ValueRef, LocalName, ValueRef)
+                    //  deferproc(pfn uintptr, arg unsafe.Pointer)
+                    //  要求arg在堆上
+                    |deferproc(GlobalName, ValueRef)
+                    //  deferprocStack(d *_defer, pfn uintptr, arg unsafe.Pointer)
+                    //  会将arg存储到d中，所以理论上arg在堆上也没有问题
+                    |deferprocStack(ValueRef, GlobalName, ValueRef)
 endmodule
 
 /*
@@ -215,6 +225,20 @@ module RUNTIME-PREPROCESS
         ifaceI2T2P (RetStruct, ToTD, FromTab, FromData)
     ... </k>
 
+    rule <k>
+        VoidInvoke(@runtime.deferprocStack,
+                        _:ParamFactor,  //  undef
+                        _:Type _:ParamAttrs D:ValueRef, // d *_defer
+                        _:ParamFactor,  //  frame *bool
+                        _:Type _:ParamAttrs Pfn:ValueRef, // pfn uintptr
+                        _:Type _:ParamAttrs Arg:ValueRef, // arg unsafe.Pointer
+            NormalLabel:LabelString , _:LabelString)
+    =>
+        deferprocStack(D, extractGlobalName(Pfn), Arg) ~> evalBlock(NormalLabel)
+    ... </k>
+        <lastBlock> _ => CurrBB </lastBlock>
+        <currBlock> CurrBB </currBlock>
+
 endmodule
 
 /*
@@ -268,10 +292,10 @@ module GOLLVM-RUNTIME
     rule [Tgrowslice]: <k>
         growslice(RetPtr:LocalName, _:ValueRef, OldArray:LocalName, Cap:ValueRef)
     =>
-        updateObjListAtLocalV(RetPtr, 0, useNewAddr())
+        memmoveToHeapAddr(useNewAddr(), addressValOf(OldArray))
+    ~>  updateObjListAtLocalV(RetPtr, 0, currNewAddr()) //  currNewAddr is function
     ~>  updateObjListAtLocalV(RetPtr, 1, nonAddr(castIntPrim(Cap)))
     ~>  updateObjListAtLocalV(RetPtr, 2, nonAddr(castIntPrim(Cap)))
-    ~>  memmoveToHeapAddr(toAddress(readObjAtLocalVWithIdxListWrapper(RetPtr, 0)), addressValOf(OldArray))
     ~>  updateObjType(toAddress(readObjAtLocalVWithIdxListWrapper(RetPtr, 0)), newLenOfArrayType(getTypeOfOffset(baseOffsetOf(OldArray)), castIntPrim(Cap)))
         ... </k>
         requires toIntCastable(Cap)
@@ -370,5 +394,13 @@ module GOLLVM-RUNTIME
     =>
         updatePrim(RetStruct, ListItem(baseOffsetOf(FromData)) ListItem(true))
     ... </k> requires eqtype(ToTD, getTDFromTab(FromTab))
+
+    rule [TdeferprocStack]: <k>
+        deferprocStack(D:LocalName, Fn:GlobalName, Arg:LocalName)
+    =>
+        pushDeferStack(defer(Fn, Arg))
+    ~>  updateObjListAtLocalV (D, 4, Fn)
+    ~>  updateObjListAtLocalV (D, 5, baseOffsetOf(Arg))
+    ... </k>
 
 endmodule

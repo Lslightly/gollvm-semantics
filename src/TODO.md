@@ -89,8 +89,31 @@ Constant也放入mem中
     - 通过checkReturnLifeTime解决
   - [ ] unsafe.Pointer和uintptr会栈地址被返回被允许。不考虑unsafe和uintptr引入的不安全性。
 
-- [X] 添加updateObjAtAddr的LifeTime检查
+- [ ] 添加updateObjAtAddr的LifeTime检查
   - 对mem中object Content部分可能进行修改的操作
     - updateObjList
-      - 添加对Content的检查
+      - [ ] 添加对Content嵌套结构的检查
     - updateObjMap
+
+- [ ] nil地址未被检测
+
+- [ ] ValueRef作为Type的子类时会导致`type {}`的情况在解析时有二义性，即可以按照空结构体类型的方式进行预测，也可以按照空结构体常数的方式进行预测。修改新开一个GoLLVMType包括ValueRef和Type，将ValueRef从Type中分离出来，然后将原本Type所涉及的相关API修改为GoLLVMType类型。
+  - [ ] 寻找所有Type涉及的API
+
+- [X] deferproc需要建模invoke指令
+  - 先记录defer，再跳转到正常基本块
+  - [ ] 忽略异常基本块
+- [ ] non-deterministic情况
+
+- [X] 在load,store的时候将全局函数名剥离出来，并设置为prim，方便invoke
+  - [ ] updateObjAtLocalV不知道是否需要进行添加trimWrapperPrim的设置
+
+- [ ] mapArgsToParams()先映射到paramValueMap中，等存储完毕之后再映射回local中，需要和storeStackState解耦，storeStackState不能影响mapArgsToParams的映射
+- [X] storeStackState()存储control
+
+- [X] useNewAddr()时没有新分配空间，通过lastAddr()获取刚分配的地址
+- [ ] growslice moveToHeap需要嵌套检查内部结构是否改变，优先级高
+
+- [ ] 给search的例子，需要能体现未知情况下也能进行搜索
+
+- [ ] 添加deferreturn支持

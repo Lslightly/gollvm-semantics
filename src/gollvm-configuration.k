@@ -54,9 +54,11 @@ module GOLLVM-CONFIGURATION
             <local2prim>    //  local value to primitive value
                 .Map
             </local2prim>
-            <callStack> .List </callStack>  //  store stack frames including local2Base, local2prim
+            <deferStack> .List </deferStack> // defer stack for current stack frame. part of stack frame
+            <callStack> .List </callStack>  //  store stack frames including local2Base, local2prim, deferStack, control
             <stackAllocs> .Map </stackAllocs>   //  store current stack alloc objects' bases
             <lifeTime> 0 </lifeTime>    // lifeTime for stack
+            <paramValueMap> .Map </paramValueMap>
             <retValue> .K </retValue> // return value
         </dynamic>
         <warnings> .List </warnings>

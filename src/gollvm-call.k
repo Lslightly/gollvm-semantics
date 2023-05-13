@@ -14,6 +14,11 @@ module GOLLVM-CALL-SYNTAX
 
     //  call void GlobalName(ParamList)
     syntax KItem ::= VoidGlobalCall(GlobalName, ParamList)
+
+    //  invoke void call
+    //  invoke fn args normal_label exception_label
+    syntax KItem ::= VoidInvoke(SymbolicValueRef, ParamList, LabelString, LabelString)
+
 endmodule
 
 /*
@@ -36,6 +41,12 @@ module CALL-PREPROCESS
     =>
     VoidGlobalCall (Fn, Params) ...
     </k>
+
+    rule [voidinvoke]: <k>
+        evalTermInst(invoke _:OptCallingConv _:RetAttrs void Fn:SymbolicValueRef(Args:ParamList)_:FuncAttrs to label NormalLabel:LabelString unwind label ExceptionLabel:LabelString _:InstructionMetadatas)
+    =>
+        VoidInvoke(Fn, Args, NormalLabel, ExceptionLabel)
+    ... </k>
 endmodule
 
 /*
@@ -47,25 +58,25 @@ module GOLLVM-CALL
     imports GOLLVM-RUNTIME
 
     //  未被处理的call指令当做error处理
-    rule <k> VoidGlobalCall (_:GlobalName, _:ParamList) #as Call => . ...</k>
+    rule [TVoidGlobalCallUnModeled]: <k> VoidGlobalCall (_:GlobalName, _:ParamList) #as Call => . ...</k>
         <errors> ... .List => ListItem(error(Call, "not modeled")) </errors> [owise]
 
-    rule <k>
+    rule [TVoidGlobalCall]:<k>
         VoidGlobalCall(
             Fn:GlobalName,
-            _:ParamList
+            Args:ParamList
         ) ~> Following
     =>
-        storeStackState() ~> shorterLifeTime()
+        storeStackState() ~> mapArgsToParams(Args, getParams(Fn)) ~> shorterLifeTime()
         ~> evalFunc(Fn) ~>
         longerLifeTime() ~> restoreStackState()
         ~> Following
     </k> requires isDefineFunction(Fn)
 
-    rule <k> NonVoidGlobalCall(_:LocalName, _:Type, _:GlobalName, _:ParamList) #as Call => . ...</k>
+    rule [TNonVoidGlobalCallUnModeled]:<k> NonVoidGlobalCall(_:LocalName, _:Type, _:GlobalName, _:ParamList) #as Call => . ...</k>
         <errors> ... .List => ListItem(error(Call, "not modeled")) </errors> [owise]
 
-    rule <k>
+    rule [TNonVoidGlobalCall]:<k>
         NonVoidGlobalCall(
             Ret:LocalName, _:Type,
             Fn:GlobalName,
@@ -78,6 +89,11 @@ module GOLLVM-CALL
         ~> Following
     </k> requires isDefineFunction(Fn)
 
+    rule [TVoidInvokeLocalName]: <k>
+        VoidInvoke (L:LocalName, Args:ParamList, NormalLabel:LabelString, _:LabelString)
+    =>
+        VoidGlobalCall({lookUpPrim(L)}:>GlobalName, Args) ~> evalBlock(NormalLabel)
+    ... </k>
 
 
 endmodule

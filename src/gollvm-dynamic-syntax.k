@@ -287,8 +287,11 @@ module GOLLVM-DYNAMIC-SYNTAX
     imports LIST-HELPER-SYNTAX
     syntax KItem ::= evalBlock(LabelString) | evalFunc(GlobalName) | evalInsts(List) | evalTermInst(BBTerminatorInstruction) | execInst(Instruction)
 
-                //  frame(local2Base, local2prim, stackAllocs)
-    syntax StackFrame ::= frame(Map, Map, Map)
+                //  control information
+    syntax Control ::= control(K, K, K, K, List)
+                //  frame(local2Base, local2prim, stackAllocs, deferStack, control)
+    syntax StackFrame ::= frame(Map, Map, Map, List, Control)
+                        //  defer(Fn, Arg Pointer)
     syntax Map ::= getLastFrameLocal2Base() [function]
                 |  getLastFrameLocal2prim() [function]
                 |  getLastFrameStackAllocs() [function]
@@ -311,6 +314,12 @@ module GOLLVM-DYNAMIC-SYNTAX
                 //  map return value to receiver
                 |   mapReturnToReceiver(LocalName)
     
+    // defer utility
+    syntax DeferFrame ::= defer(GlobalName, ValueRef)
+                |   popDeferStack()
+    syntax KItem ::= pushDeferStack(DeferFrame)
+    syntax Bool ::= isDefetStackEmpty() [function]
+
                     //  return whether function has definition
     syntax Bool ::= isDefineFunction(GlobalName) [function]
                     //  return param list of function

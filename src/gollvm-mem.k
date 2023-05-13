@@ -25,7 +25,7 @@ module NON-ADDR-SYNTAX
     syntax KItem ::= NonAddr
     syntax KResult ::= NonAddr
     //  nonAddr(V) -> V
-    syntax KItem ::= trimWrapperNonAddr(KItem) [function]
+    syntax KItem ::= trimWrapperPrim(KItem) [function]
 endmodule
 
 module NON-ADDR
@@ -34,10 +34,15 @@ module NON-ADDR
     imports GOLLVM-MEM-SYNTAX
 
     rule isNonAddrSort(_:Address) => false
+    rule isNonAddrSort(Cast:ConstExpr) => false
+        requires notBool isDefineFunction (extractGlobalName(Cast)) andBool notBool isTypeDescriptor(Cast)
     rule isNonAddrSort(_) => true [owise]
 
-    rule trimWrapperNonAddr(nonAddr(I:KItem)) => I
-    rule trimWrapperNonAddr(S:KItem) => S [owise]
+    rule trimWrapperPrim(nonAddr(I:KItem)) => I
+    rule trimWrapperPrim(Cast:ConstExpr) => extractGlobalName(Cast) requires isDefineFunction (extractGlobalName(Cast))
+    // TODO 确定是否真的要把类型描述符统一为使用全局变量？
+    rule trimWrapperPrim(Cast:ConstExpr) => extractGlobalName(Cast) requires isTypeDescriptor(Cast)
+    rule trimWrapperPrim(S:KItem) => S [owise]
     
 endmodule
 
@@ -60,6 +65,8 @@ module GOLLVM-MEM-SYNTAX
                     |   toAddress(KItem) [seqstrict]
                     //  获得当前新地址Base
                     |   currNewAddr() [function]
+                    //  获取刚分配的地址，用于在新分配地址useNewAddr()之后获取这个地址
+                    |   lastAddr() [function]
                     //  获得当前新地址Address并将nextId+1
                     |   useNewAddr()
     syntax KItem ::= addressValOfWrapper(LocalName) [seqstrict]
@@ -163,6 +170,7 @@ module GOLLVM-MEM
     rule <k> toAddress(V:Address) => V ...</k>
     
     rule currNewAddr() => baseOffset(currBase(), .List)
+    rule lastAddr() => baseOffset(currBase() -Int 1, .List)
     rule <k> useNewAddr() => baseOffset(Base, .List) ...</k>
         <nextId> Base:Int => Base +Int 1</nextId>
 
@@ -248,7 +256,7 @@ module GOLLVM-MEM
         </local2prim> requires V in_keys(Local2Prim)
     rule <k> updatePrim (L:LocalName, V:KItem) => . ...</k>
         <local2prim>
-            Local2Prim => Local2Prim [L <- V]
+            Local2Prim => Local2Prim [L <- trimWrapperPrim(V)]
         </local2prim>
 
     rule [TmemmoveToHeap]: <k> memmoveToHeap(Dst:LocalName, Src:LocalName)
