@@ -106,7 +106,7 @@ Constant也放入mem中
 - [ ] non-deterministic情况
 
 - [X] 在load,store的时候将全局函数名剥离出来，并设置为prim，方便invoke
-  - [ ] updateObjAtLocalV不知道是否需要进行添加trimWrapperPrim的设置
+  - [ ] updateObjAtLocalV对于prim不知道是否需要进行添加trimWrapperPrim的设置
 
 - [ ] mapArgsToParams()先映射到paramValueMap中，等存储完毕之后再映射回local中，需要和storeStackState解耦，storeStackState不能影响mapArgsToParams的映射
 - [X] storeStackState()存储control

@@ -13,7 +13,7 @@ echo "-----------------\
 negative"
 
 # negative
-negativeTest=(min_level/preprocessed.min_level.ll issue44614/preprocessed.issue44614.ll slice/preprocessed.slice.ll)
+negativeTest=(min_level/preprocessed.min_level.ll issue44614/preprocessed.issue44614.ll slice/preprocessed.slice.ll stack2stack/preprocessed.stack2stack.ll)
 
 for file in ${negativeTest[@]}
 do
