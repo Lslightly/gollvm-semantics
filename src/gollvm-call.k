@@ -18,6 +18,8 @@ module GOLLVM-CALL-SYNTAX
     //  invoke void call
     //  invoke fn args normal_label exception_label
     syntax KItem ::= VoidInvoke(SymbolicValueRef, ParamList, LabelString, LabelString)
+                    //  local = type invoke fn args normal_label exception_label
+                    |NonVoidInvoke(LocalName, Type, SymbolicValueRef, ParamList, LabelString, LabelString)
 
 endmodule
 
@@ -46,6 +48,14 @@ module CALL-PREPROCESS
         evalTermInst(invoke _:OptCallingConv _:RetAttrs void Fn:SymbolicValueRef(Args:ParamList)_:FuncAttrs to label NormalLabel:LabelString unwind label ExceptionLabel:LabelString _:InstructionMetadatas)
     =>
         VoidInvoke(Fn, Args, NormalLabel, ExceptionLabel)
+    ... </k>
+
+    rule [nonvoidinvoke]: <k>
+        evalTermInst(L:LocalName =
+            invoke _:OptCallingConv _:RetAttrs RetType:Type 
+            Fn:SymbolicValueRef(Args:ParamList)_:FuncAttrs to label NormalLabel:LabelString unwind label ExceptionLabel:LabelString _:InstructionMetadatas)
+    =>
+        NonVoidInvoke(L, RetType, Fn, Args, NormalLabel, ExceptionLabel)
     ... </k>
 endmodule
 
@@ -89,11 +99,36 @@ module GOLLVM-CALL
         ~> Following
     </k> requires isDefineFunction(Fn)
 
+    rule [TVoidInvokeGlobalName]: <k>
+        VoidInvoke (Fn:GlobalName, Args:ParamList, NormalLabel:LabelString, _:LabelString)
+    =>
+        VoidGlobalCall(Fn, Args) ~> evalBlock(NormalLabel)
+    ... </k>
+        <lastBlock> _ => CurrBB </lastBlock>
+        <currBlock> CurrBB </currBlock>
+
     rule [TVoidInvokeLocalName]: <k>
         VoidInvoke (L:LocalName, Args:ParamList, NormalLabel:LabelString, _:LabelString)
     =>
         VoidGlobalCall({lookUpPrim(L)}:>GlobalName, Args) ~> evalBlock(NormalLabel)
     ... </k>
+        <lastBlock> _ => CurrBB </lastBlock>
+        <currBlock> CurrBB </currBlock>
 
+    rule [TNonVoidInvokeGlobalName]: <k>
+        NonVoidInvoke(L, RetType, Fn:GlobalName, Args, NormalLabel, _:LabelString)
+    =>
+        NonVoidGlobalCall (L, RetType, Fn, Args) ~> evalBlock(NormalLabel)
+    ... </k>
+        <lastBlock> _ => CurrBB </lastBlock>
+        <currBlock> CurrBB </currBlock>
+
+    rule [TNonVoidInvokeLocalName]: <k>
+        NonVoidInvoke(L, RetType, Fn:LocalName, Args, NormalLabel, _:LabelString)
+    =>
+        NonVoidGlobalCall(L, RetType, {lookUpPrim(Fn)}:>GlobalName, Args) ~> evalBlock(NormalLabel)
+    ... </k>
+        <lastBlock> _ => CurrBB </lastBlock>
+        <currBlock> CurrBB </currBlock>
 
 endmodule

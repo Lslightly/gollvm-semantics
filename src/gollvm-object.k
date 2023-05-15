@@ -49,7 +49,10 @@ module OBJECT-SYNTAX
     syntax KItem ::= checkReturnLifeTime(BaseOffset)
                     //  检查对象内容中的地址满足不变式约束，即需要知道对象的地址和生命期
                     //  注意object需要为修改后的object，function可能返回之前的object
+    syntax Error ::= assertInHeapFail(Instruction, Object)
     syntax KItem ::= selfCheckLifeTime(Address)
+                    //  检查是否在堆上
+                    |selfCheckInHeap(Address)
     syntax Object ::= object(ObjectType, Bool, Content, Map, Location, LifeTime)
 
 // create/search:
@@ -281,6 +284,15 @@ module OBJECT
         selfCheckLifeTime (_:Address) => .
     ... </k> [owise]
 
+    rule <k>
+        selfCheckInHeap(Addr:Address) => .
+    ... </k>
+        <errors> ... .List => ListItem(assertInHeapFail(getCurrInst(), searchObjAtAddr(Addr))) </errors>
+        requires notBool inHeap(searchObjAtAddr(Addr))
+    rule <k>
+        selfCheckInHeap(_:Address) => .
+    ... </k> [owise]
+
 
 // Object
 // create/search:-------------------------------
@@ -401,7 +413,6 @@ module OBJECT
             Mem => Mem [ Base <- updateListOfObject (searchObjAtBase(Base), IdxList, NewVal)]
         </mem> [priority(51)]
 
-    //  TODO 嵌套结构中可能包含地址值
     rule <k>
         updateObjList(baseOffset(Base:Int, IdxList:List) #as Dst, NewVal:Content) => .
     ... </k>
@@ -572,12 +583,28 @@ module OBJECT
         appendOffsetToMatchSize(Size:Int, Addr:BaseOffset)
     =>
         Addr
-    requires SizeOfType(getTypeOfOffset(Addr)) ==Int Size andThenBool isBasicTypeSort(getTypeOfOffset(Addr))
-    rule [TappendOffsetToMatchSizeNotBasic]:
+    requires
+        SizeOfType(getTypeOfOffset(Addr)) ==Int Size
+    andThenBool
+        (
+            isBasicTypeSort(getTypeOfOffset(Addr))
+        orElseBool
+            (
+                notBool isBasicTypeSort(getTypeOfOffset(Addr))
+                andBool
+                    (SizeOfType(subType(getTypeOfOffset(Addr), ListItem(0))) <Int SizeOfType(getTypeOfOffset(Addr)))
+            )
+        )
+    rule [TappendOffsetToMatchSizeSubTypeLarge]:
         appendOffsetToMatchSize(Size:Int, baseOffset(Base:Int, IdxList:List) #as Addr)
     =>
         appendOffsetToMatchSize (Size, baseOffset (Base, IdxList ListItem(0)))
-    requires SizeOfType(getTypeOfOffset(Addr)) ==Int Size andThenBool notBool isBasicTypeSort(getTypeOfOffset(Addr))
+    requires SizeOfType(getTypeOfOffset(Addr)) ==Int Size andThenBool
+        (
+            (notBool isBasicTypeSort(getTypeOfOffset(Addr)))
+        andThenBool
+            (SizeOfType(subType(getTypeOfOffset(Addr), ListItem(0))) ==Int SizeOfType(getTypeOfOffset(Addr)))
+        )
 
     rule [TappendOffsetToMatchSizeRecur]:
         appendOffsetToMatchSize(Size:Int, baseOffset(Base:Int, IdxList:List) #as Addr)

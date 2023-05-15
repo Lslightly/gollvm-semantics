@@ -13,10 +13,14 @@ module GOLLVM-TYPE-DESCRIPTOR-SYNTAX
     imports BOOL
     syntax Bool ::= isStructTypeTD(GlobalName) [function]
                 |   isPointerTypeTD(GlobalName) [function]
+                |   isSliceTypeTD(GlobalName) [function]
+                |   isArrayTypeTD(GlobalName) [function]
                 |   istypeTD(GlobalName) [function]
                 |   isTypeDescriptorGV(GlobalName) [function]
                 //  判断ValueRef是否为类型描述符
-                |   isTypeDescriptor(ValueRef) [function]
+                |   isTypeDescriptor(Type) [function]
+                //  判断是否为基础类型类型描述符
+                |   isBasicTypeTD(GlobalName) [function]
 endmodule
 
 module GOLLVM-TYPE-DESCRIPTOR
@@ -24,14 +28,32 @@ module GOLLVM-TYPE-DESCRIPTOR
     imports BOOL
     imports CONSTANT
     imports STRING
+    imports K-EQUAL
     rule isStructTypeTD(GV:GlobalName) => LocalNameToString({getTypeOfGlobalV(GV)}:>LocalName) ==String "%StructType.0"
-    rule isPointerTypeTD(GV:GlobalName) => LocalNameToString({getTypeOfGlobalV(GV)}:>LocalName) ==String "%PtrType.0"
+    rule isPointerTypeTD(GV:GlobalName) => LocalNameToString({getTypeOfGlobalV(GV)}:>LocalName) ==String "%PtrType.0" andThenBool readObjAtGlobalVWithIdxList(GV, 0, 0, .Ints) ==K 8
+    //  指针类型的size并不恒为8，但是在LLVM IR中需要理解为8。在可变参数被以defer中arg方式传递的情况下指针类型size为24，即slice结构体的大小，其元素类型为slice元素类型
+    rule isSliceTypeTD (GV:GlobalName)
+    =>
+        (
+            LocalNameToString({getTypeOfGlobalV(GV)}:>LocalName) ==String "%PtrType.0"
+        andThenBool
+            readObjAtGlobalVWithIdxList(GV, 0, 0, .Ints) ==K 24
+        )
+        orElseBool
+            LocalNameToString({getTypeOfGlobalV(GV)}:>LocalName) ==String "%SliceType.0"
+
     rule istypeTD(GV:GlobalName) => LocalNameToString({getTypeOfGlobalV(GV)}:>LocalName) ==String "%_type.0"
+    rule isArrayTypeTD(GV:GlobalName) => LocalNameToString({getTypeOfGlobalV(GV)}:>LocalName) ==String "%ArrayType.0"
     rule isTypeDescriptorGV(GV:GlobalName) =>
         isStructTypeTD(GV)
     orElseBool isPointerTypeTD(GV)
     orElseBool istypeTD(GV)
-    rule isTypeDescriptor(V:ValueRef) => (isGepConst(V) orBool isBitcastConst (V) ) andThenBool isTypeDescriptorGV(extractGlobalName(V))
+    orElseBool isArrayTypeTD(GV)
+    orElseBool isSliceTypeTD(GV)
+    rule isTypeDescriptor(V:ConstExpr) => (isGepConst(V) orBool isBitcastConst (V) ) andThenBool isTypeDescriptorGV(extractGlobalName(V))
+    rule isTypeDescriptor(_) => false [owise]
+
+    rule isBasicTypeTD (GV:GlobalName) => istypeTD (GV) orElseBool isPointerTypeTD(GV)
 endmodule
 
 module LLVM-TYPE-DYNAMIC-SYNTAX
@@ -45,6 +67,7 @@ module LLVM-TYPE-DYNAMIC-SYNTAX
     //  Type -> List with default value uninit
     //  TypeList -> List with default value uninit
     syntax Content ::= initOfType(Type) [function]
+                    |  initOfTD(ValueRef) [function]
     syntax List ::= initOfTypeList(TypeList) [function]
                 |   convTypeList2List(TypeList) [function]
     syntax Int ::=  cntDepthOf1stUnderlyingType(Type) [function]
@@ -58,15 +81,17 @@ module LLVM-TYPE-DYNAMIC-SYNTAX
     syntax Type ::= trimPtrType(Type) [function]
                 |   subType(Type, List) [function]
                 |   subTypeList(TypeList, List) [function]
-                |   subTypeTD(GlobalName, List) [function]
                 //  matchSubType(ParentType, Size)
                 |   matchSubType(Type, Int) [function]
                 |   newLenOfArrayType(Type, Int) [function]
                 |   valueTypeOfMapType(GlobalName) [function]
                 |   valueTypeOfMapTypeConstGepExpr(ValueRef) [function]
+                //  Type Descriptor's subtype is Type Descriptor
+                |   subTypeTD(GlobalName, List) [function]
     syntax Bool ::= isValidTypeIdx(Type, List) [function]
                 //  List of Type, Idxs
                 |   isValidTypeListIdx(List, List) [function]
+                |   isValidTypeIdxTD(GlobalName, List) [function]
     syntax Bool ::= isBasicTypeSort(Type) [function]
                 // TODO eqtype for TD/Type
                 |   eqtype(Type, Type) [function]
@@ -132,13 +157,28 @@ module LLVM-TYPE-DYNAMIC
     rule SizeOfType (< { TyList:TypeList } >) => SizeOfTypeList(TyList)
     //  Gep Type Descriptor
     rule [TSizeOfTypeGepTD]: SizeOfType(GepTD:ConstExpr) => {evalConst(GepTD)}:>Int
+    rule [TSizeOfPointerType]:
+        SizeOfType (TD:GlobalName) => 8
+        requires isPointerTypeTD(TD)
+        [priority(49)]
+    rule [TSizeOfSliceType]:
+        SizeOfType(TD:GlobalName) => 24
+        requires isSliceTypeTD(TD)
+        [priority(48)]
     //  Type Descriptor
     rule [TSizeOfTypeTD]:
         SizeOfType(TD:GlobalName)
     =>
         {readObjAtGlobalVWithIdxList(TD, 0, .Ints)}:>Int
+        requires istypeTD(TD)
+    rule [TSizeOfComplexTD]:
+        SizeOfType(TD:GlobalName)
+    =>
+        {readObjAtGlobalVWithIdxList(TD, 0, 0, .Ints)}:>Int
+        [owise]
     rule [TSizeOfTypeV]:
         SizeOfType(TypeV:LocalName) => SizeOfType(realType(TypeV))
+
 
     rule SizeOfTypeList (T:Type, Ts:TypeList) => SizeOfType(T) +Int SizeOfTypeList (Ts)
     rule SizeOfTypeList(.TypeList) => 0
@@ -166,14 +206,15 @@ module LLVM-TYPE-DYNAMIC
     rule subType({ TyList }, L:List) => subTypeList(TyList, L)
     rule subType(<{ TyList }>, L:List) => subTypeList(TyList, L)
     rule subType(TypeV:LocalName, L:List) => subType(realType(TypeV), L)
-    rule [TsubTypeTD]: subType(getelementptr _:OptInBounds(_:Type, _:Type TD:GlobalName , _:ReturnedVal), L:List) => subTypeTD(TD, L) requires isLocalNameSort(getTypeOfGlobalV(TD))
+    rule [TsubTypeTD]: subType(getelementptr _:OptInBounds(_:Type, _:Type TD:GlobalName , _:ReturnedVal), L:List) => subTypeTD(TD, L) requires isTypeDescriptorGV(TD)
+    rule subType(TD:GlobalName, L:List) => subTypeTD (TD, L) requires isTypeDescriptorGV(TD)
 
     rule subTypeList(TyList:TypeList, ListItem(I:Int) L:List) => subType({convTypeList2List(TyList)[I]}:>Type, L)
 
     rule [TsubTypeTDStruct]: subTypeTD(TD:GlobalName, ListItem(I:Int) Remains:List) =>
     subTypeTD(
         readConstAndExtractGlobalName(  //  the I th field's typ field
-            readConstAndExtractGlobalName(  //  fields' array pointer
+            readConstAndExtractGlobalName(  //  fields' array pointer, 1 for []structfield field, 0 for array header pointer
                 TD, 1, 0, .Ints
             ),
             I, 2, .Ints
@@ -181,7 +222,38 @@ module LLVM-TYPE-DYNAMIC
         Remains
     )
     requires isStructTypeTD(TD)
-    rule subTypeTD(TD:GlobalName, .List) => TD
+    rule [TsubTypeTDArray]:
+        subTypeTD (TD:GlobalName, ListItem(_:Int) Remains:List)
+    =>
+        subTypeTD(
+            readConstAndExtractGlobalName (
+                TD, 1, .Ints
+            ),
+            Remains
+        )
+    requires isArrayTypeTD(TD)
+    rule [TsubTypeTDSliceArray]:
+        subTypeTD (TD:GlobalName, ListItem(0) Remains:List)
+    =>
+        subTypeTD(
+            readConstAndExtractGlobalName (
+                TD, 1, .Ints
+            ),
+            Remains
+        )
+    requires isSliceTypeTD(TD)
+    rule [TsubTypeTDSliceLen]:
+        subTypeTD (TD:GlobalName, ListItem(1) .List)
+    =>
+        StringToIntTypePre("i64")
+    requires isSliceTypeTD(TD)
+    rule [TsubTypeTDSliceCap]:
+        subTypeTD (TD:GlobalName, ListItem(2) .List)
+    =>
+        StringToIntTypePre("i64")
+    requires isSliceTypeTD(TD)
+
+    rule subTypeTD(TD:GlobalName, .List) => TD [owise]
 
     rule isValidTypeIdx (_:Type, .List) => true [priority(49)]
     rule isValidTypeIdx(_:PrimType, .List) => true
@@ -192,6 +264,18 @@ module LLVM-TYPE-DYNAMIC
     rule isValidTypeListIdx (TyList:List, ListItem(Idx:Int) L:List) => Idx <Int size (TyList) andBool isValidTypeIdx({TyList[Idx]}:>Type, L)
     rule isValidTypeIdx (_:Type, _:List) => false [owise]
     rule isValidTypeIdx (TypeV:LocalName, L:List) => isValidTypeIdx(realType(TypeV), L)
+    rule [TisValidTypeIdxConstExpr]: isValidTypeIdx(TD:ConstExpr, L:List) => isValidTypeIdxTD(extractGlobalName(TD), L) requires isTypeDescriptor(TD)
+    rule [TisValidTypeIdxGlobalName]:
+        isValidTypeIdx(GV:GlobalName, L:List) => isValidTypeIdxTD(GV, L)
+
+    // TODO 不完全
+    rule isValidTypeIdxTD(_:GlobalName, .List) => true
+    rule isValidTypeIdxTD(_:GlobalName, _:List) => false [owise]
+    rule [isValidTypeIdxTDComplexTD]:
+        isValidTypeIdxTD(TD:GlobalName, ListItem(I:Int) Remains:List)
+    =>
+        isValidTypeIdx(subTypeTD(TD, ListItem(I)), Remains:List)
+    requires isArrayTypeTD(TD) orElseBool isStructTypeTD(TD) orElseBool isSliceTypeTD(TD)
 
     rule cntDepthOf1stUnderlyingType (metadata) => 0
     rule cntDepthOf1stUnderlyingType (_:X86Type) => 0
@@ -238,12 +322,12 @@ module LLVM-TYPE-DYNAMIC
     rule isBasicTypeSort (metadata) => true
     rule isBasicTypeSort (_:Type _:OptAddrSpace *) => true
     rule isBasicTypeSort (_:Type (_:ArgList)) => true
-    rule isBasicTypeSort (TD:GlobalName) => getTypeOfGlobalV (TD) ==K %_type.0
+    rule isBasicTypeSort (TD:GlobalName) => isBasicTypeTD(TD)
     rule
         isBasicTypeSort(GepTD:ValueRef)
     =>
-        getTypeOfGlobalV(extractGlobalName(GepTD)) ==K %PtrType.0
-    requires isGepConst(GepTD)
+        isBasicTypeSort(extractGlobalName(GepTD))
+    requires isTypeDescriptor(GepTD)
 
     rule eqtype(L:Type, R:Type) => L ==K R [owise]
     //  TODO measure accurate _type*

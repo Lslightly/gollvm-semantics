@@ -11,6 +11,8 @@ module GOLLVM-SYNTAX-HELPER-SYNTAX
 // extract GlobalName from ValueRef
     syntax GlobalName ::= extractGlobalName(ValueRef) [function]
 
+    syntax Bool ::= isGlobalNameSort(KItem) [function]
+
 // judge whether is the specified format of code
     syntax Bool ::= isGepConst(ValueRef) [function]
                 |   isBitcastConst(ValueRef) [function]
@@ -42,6 +44,9 @@ module GOLLVM-SYNTAX-HELPER
         extractGlobalName (ptrtoint(_:Type GV:GlobalName to _:Type))
     =>
         GV
+    
+    rule isGlobalNameSort (_:GlobalName) => true
+    rule isGlobalNameSort (_:KItem) => false [owise]
     
     rule isGepConst (_:ValueRef) => false [owise]
     rule isGepConst (getelementptr _:OptInBounds(_:Type, _:Type GV:GlobalName, _:ReturnedVal)) => true requires isConst(GV)

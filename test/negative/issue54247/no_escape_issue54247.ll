@@ -227,8 +227,9 @@ entry:
   %tmpv.0 = alloca i8, align 1, !go_addrtaken !3
   %tmpv.5 = alloca { { %functionDescriptor.0**, i64, i64 } }, align 8, !go_addrtaken !3
   store i8 0, i8* %tmpv.0, align 1
-  %call.0 = invoke i8* @runtime.newobject(i8* nest undef, %_type.0* getelementptr inbounds (%StructType.0, %StructType.0* @main.obj..d, i64 0, i32 0))
-          to label %cont.1 unwind label %pad.1
+  %obj1 = alloca {i64}, align 8
+  %call.0 = bitcast {i64}* %obj1 to i8*
+  br label %cont.1
 
 pad.0:                                            ; preds = %cont.7, %finish.0
   %ehtmp.0.sroa.0.0 = phi i8* [ undef, %cont.7 ], [ %ehtmp.0.sroa.0.1, %finish.0 ]

@@ -99,8 +99,8 @@ entry:
   %tmpv.3 = alloca { i8*, i8*, i8*, i8*, i64, i8*, i64, i8, i8 }, align 8, !go_addrtaken !3
   %tmpv.4 = alloca { { %functionDescriptor.0**, i64, i64 } }, align 8, !go_addrtaken !3
   store i8 0, i8* %tmpv.0, align 1
-  %0 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %tmpv.1, i64 0, i32 0
-  store i64 0, i64* %0, align 8
+  %field.0 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %tmpv.1, i64 0, i32 0
+  store i64 2, i64* %field.0, align 8
   %index.0 = getelementptr inbounds [1 x %functionDescriptor.0*], [1 x %functionDescriptor.0*]* %tmpv.2, i64 0, i64 0
   store %functionDescriptor.0* %tmpv.1, %functionDescriptor.0** %index.0, align 8
   %cast.14 = bitcast { i8*, i8*, i8*, i8*, i64, i8*, i64, i8, i8 }* %tmpv.3 to i8*
@@ -109,8 +109,8 @@ entry:
   store %functionDescriptor.0** %index.0, %functionDescriptor.0*** %tmp.0.sroa.0.0.cast.12.sroa_idx, align 8
   %tmp.0.sroa.2.0.cast.12.sroa_idx1 = getelementptr inbounds { { %functionDescriptor.0**, i64, i64 } }, { { %functionDescriptor.0**, i64, i64 } }* %tmpv.4, i64 0, i32 0, i32 1
   store i64 1, i64* %tmp.0.sroa.2.0.cast.12.sroa_idx1, align 8
-  %1 = getelementptr i64, i64* %tmp.0.sroa.2.0.cast.12.sroa_idx1, i64 1
-  store i64 1, i64* %1, align 8
+  %0 = getelementptr inbounds { { %functionDescriptor.0**, i64, i64 } }, { { %functionDescriptor.0**, i64, i64 } }* %tmpv.4, i64 0, i32 0, i32 2
+  store i64 1, i64* %0, align 8
   invoke void @runtime.deferprocStack(i8* nest undef, i8* nonnull %cast.14, i8* nonnull %tmpv.0, i64 ptrtoint (void (i8*, { { %functionDescriptor.0**, i64, i64 } }*)* @main.go..thunk0 to i64), i8* nonnull %cast.10)
           to label cont.1 unwind label pad.1
 
@@ -148,8 +148,8 @@ catchpad.0:
   br label finish.0
 
 cont.1:                                           
-  %2 = getelementptr %__go_descriptor.1, %__go_descriptor.1* %task, i64 0, i32 0
-  %deref.ld.03 = load void (i8*)*, void (i8*)** %2, align 8
+  %1 = getelementptr %__go_descriptor.1, %__go_descriptor.1* %task, i64 0, i32 0
+  %deref.ld.03 = load void (i8*)*, void (i8*)** %1, align 8
   %cast.18 = bitcast %__go_descriptor.1* %task to i8*
   invoke void %deref.ld.03(i8* nest nonnull %cast.18)
           to label cont.2 unwind label pad.1
@@ -171,8 +171,8 @@ declare i32 @__gccgo_personality_v0(i32, i32, i64, i8*, i8*)
 
 define internal void @main.go..thunk0(i8* nest nocapture readnone %nest.9, { { %functionDescriptor.0**, i64, i64 } }* nocapture readonly %__go_thunk_parameter) #0 {
 entry:
-  %field.12 = getelementptr inbounds { { %functionDescriptor.0**, i64, i64 } }, { { %functionDescriptor.0**, i64, i64 } }* %__go_thunk_parameter, i64 0, i32 0
-  call void @main.Recover(i8* nest undef, { %functionDescriptor.0**, i64, i64 }* byval({ %functionDescriptor.0**, i64, i64 }) %field.12)
+  %field.13 = getelementptr inbounds { { %functionDescriptor.0**, i64, i64 } }, { { %functionDescriptor.0**, i64, i64 } }* %__go_thunk_parameter, i64 0, i32 0
+  call void @main.Recover(i8* nest undef, { %functionDescriptor.0**, i64, i64 }* byval({ %functionDescriptor.0**, i64, i64 }) %field.13)
   ret void
 }
 
@@ -184,14 +184,14 @@ declare void @runtime.deferreturn(i8*, i8*) local_unnamed_addr #0
 
 define void @main.Recover(i8* nest nocapture readnone %nest.3, { %functionDescriptor.0**, i64, i64 }* nocapture readonly byval({ %functionDescriptor.0**, i64, i64 }) %objs) #1 {
 entry:
-  %field.4 = getelementptr inbounds { %functionDescriptor.0**, i64, i64 }, { %functionDescriptor.0**, i64, i64 }* %objs, i64 0, i32 1
-  %objs.field.ld.0 = load i64, i64* %field.4, align 8
+  %field.5 = getelementptr inbounds { %functionDescriptor.0**, i64, i64 }, { %functionDescriptor.0**, i64, i64 }* %objs, i64 0, i32 1
+  %objs.field.ld.0 = load i64, i64* %field.5, align 8
   %icmp.2 = icmp sgt i64 %objs.field.ld.0, 0
   br i1 %icmp.2, label fallthrough.0, label else.0
 
 fallthrough.0:                                    
-  %field.6 = getelementptr inbounds { %functionDescriptor.0**, i64, i64 }, { %functionDescriptor.0**, i64, i64 }* %objs, i64 0, i32 0
-  %objs.field.ld.2 = load %functionDescriptor.0**, %functionDescriptor.0*** %field.6, align 8
+  %field.7 = getelementptr inbounds { %functionDescriptor.0**, i64, i64 }, { %functionDescriptor.0**, i64, i64 }* %objs, i64 0, i32 0
+  %objs.field.ld.2 = load %functionDescriptor.0**, %functionDescriptor.0*** %field.7, align 8
   %.ptroff.ld.0 = load %functionDescriptor.0*, %functionDescriptor.0** %objs.field.ld.2, align 8
   %icmp.3 = icmp eq %functionDescriptor.0* %.ptroff.ld.0, null
   br i1 %icmp.3, label then.1, label else.1, !make.implicit !3
@@ -205,8 +205,8 @@ then.1:
   unreachable
 
 else.1:                                           
-  %field.7 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %.ptroff.ld.0, i64 0, i32 0
-  %.field.ld.0 = load i64, i64* %field.7, align 8
+  %field.8 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %.ptroff.ld.0, i64 0, i32 0
+  %.field.ld.0 = load i64, i64* %field.8, align 8
   call void @runtime.printlock(i8* nest undef)
   call void @runtime.printint(i8* nest undef, i64 %.field.ld.0)
   call void @runtime.printnl(i8* nest undef)

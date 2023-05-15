@@ -214,8 +214,8 @@ entry:
   %tmpv.3 = alloca { i8*, i8*, i8*, i8*, i64, i8*, i64, i8, i8 }, align 8, !go_addrtaken !3
   %tmpv.4 = alloca { { %functionDescriptor.0**, i64, i64 } }, align 8, !go_addrtaken !3
   store i8 0, i8* %tmpv.0, align 1
-  %0 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %tmpv.1, i64 0, i32 0
-  store i64 0, i64* %0, align 8
+  %field.0 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %tmpv.1, i64 0, i32 0
+  store i64 2, i64* %field.0, align 8
   %index.0 = getelementptr inbounds [1 x %functionDescriptor.0*], [1 x %functionDescriptor.0*]* %tmpv.2, i64 0, i64 0
   store %functionDescriptor.0* %tmpv.1, %functionDescriptor.0** %index.0, align 8
   %cast.14 = bitcast { i8*, i8*, i8*, i8*, i64, i8*, i64, i8, i8 }* %tmpv.3 to i8*
@@ -223,8 +223,9 @@ entry:
   %tmp.0.sroa.0.0.cast.12.sroa_idx = getelementptr inbounds { { %functionDescriptor.0**, i64, i64 } }, { { %functionDescriptor.0**, i64, i64 } }* %tmpv.4, i64 0, i32 0, i32 0
   store %functionDescriptor.0** %index.0, %functionDescriptor.0*** %tmp.0.sroa.0.0.cast.12.sroa_idx, align 8
   %tmp.0.sroa.2.0.cast.12.sroa_idx1 = getelementptr inbounds { { %functionDescriptor.0**, i64, i64 } }, { { %functionDescriptor.0**, i64, i64 } }* %tmpv.4, i64 0, i32 0, i32 1
-  %1 = bitcast i64* %tmp.0.sroa.2.0.cast.12.sroa_idx1 to <2 x i64>*
-  store <2 x i64> <i64 1, i64 1>, <2 x i64>* %1, align 8
+  store i64 1, i64* %tmp.0.sroa.2.0.cast.12.sroa_idx1, align 8
+  %0 = getelementptr inbounds { { %functionDescriptor.0**, i64, i64 } }, { { %functionDescriptor.0**, i64, i64 } }* %tmpv.4, i64 0, i32 0, i32 2
+  store i64 1, i64* %0, align 8
   invoke void @runtime.deferprocStack(i8* nest undef, i8* nonnull %cast.14, i8* nonnull %tmpv.0, i64 ptrtoint (void (i8*, { { %functionDescriptor.0**, i64, i64 } }*)* @main.go..thunk0 to i64), i8* nonnull %cast.10)
           to label %cont.1 unwind label %pad.1
 
@@ -262,8 +263,8 @@ catchpad.0:                                       ; preds = %pad.1
   br label %finish.0
 
 cont.1:                                           ; preds = %entry
-  %2 = getelementptr %__go_descriptor.1, %__go_descriptor.1* %task, i64 0, i32 0
-  %deref.ld.03 = load void (i8*)*, void (i8*)** %2, align 8
+  %1 = getelementptr %__go_descriptor.1, %__go_descriptor.1* %task, i64 0, i32 0
+  %deref.ld.03 = load void (i8*)*, void (i8*)** %1, align 8
   %cast.18 = bitcast %__go_descriptor.1* %task to i8*
   invoke void %deref.ld.03(i8* nest nonnull %cast.18)
           to label %cont.2 unwind label %pad.1
@@ -285,8 +286,8 @@ declare i32 @__gccgo_personality_v0(i32, i32, i64, i8*, i8*)
 
 define internal void @main.go..thunk0(i8* nest nocapture readnone %nest.9, { { %functionDescriptor.0**, i64, i64 } }* nocapture readonly %__go_thunk_parameter) #0 {
 entry:
-  %field.12 = getelementptr inbounds { { %functionDescriptor.0**, i64, i64 } }, { { %functionDescriptor.0**, i64, i64 } }* %__go_thunk_parameter, i64 0, i32 0
-  call void @main.Recover(i8* nest undef, { %functionDescriptor.0**, i64, i64 }* byval({ %functionDescriptor.0**, i64, i64 }) %field.12)
+  %field.13 = getelementptr inbounds { { %functionDescriptor.0**, i64, i64 } }, { { %functionDescriptor.0**, i64, i64 } }* %__go_thunk_parameter, i64 0, i32 0
+  call void @main.Recover(i8* nest undef, { %functionDescriptor.0**, i64, i64 }* byval({ %functionDescriptor.0**, i64, i64 }) %field.13)
   ret void
 }
 
@@ -299,14 +300,14 @@ declare void @runtime.deferreturn(i8*, i8*) local_unnamed_addr #0
 ; Function Attrs: noinline
 define void @main.Recover(i8* nest nocapture readnone %nest.3, { %functionDescriptor.0**, i64, i64 }* nocapture readonly byval({ %functionDescriptor.0**, i64, i64 }) %objs) #1 {
 entry:
-  %field.4 = getelementptr inbounds { %functionDescriptor.0**, i64, i64 }, { %functionDescriptor.0**, i64, i64 }* %objs, i64 0, i32 1
-  %objs.field.ld.0 = load i64, i64* %field.4, align 8
+  %field.5 = getelementptr inbounds { %functionDescriptor.0**, i64, i64 }, { %functionDescriptor.0**, i64, i64 }* %objs, i64 0, i32 1
+  %objs.field.ld.0 = load i64, i64* %field.5, align 8
   %icmp.2 = icmp sgt i64 %objs.field.ld.0, 0
   br i1 %icmp.2, label %fallthrough.0, label %else.0
 
 fallthrough.0:                                    ; preds = %entry
-  %field.6 = getelementptr inbounds { %functionDescriptor.0**, i64, i64 }, { %functionDescriptor.0**, i64, i64 }* %objs, i64 0, i32 0
-  %objs.field.ld.2 = load %functionDescriptor.0**, %functionDescriptor.0*** %field.6, align 8
+  %field.7 = getelementptr inbounds { %functionDescriptor.0**, i64, i64 }, { %functionDescriptor.0**, i64, i64 }* %objs, i64 0, i32 0
+  %objs.field.ld.2 = load %functionDescriptor.0**, %functionDescriptor.0*** %field.7, align 8
   %.ptroff.ld.0 = load %functionDescriptor.0*, %functionDescriptor.0** %objs.field.ld.2, align 8
   %icmp.3 = icmp eq %functionDescriptor.0* %.ptroff.ld.0, null
   br i1 %icmp.3, label %then.1, label %else.1, !make.implicit !3
@@ -320,8 +321,8 @@ then.1:                                           ; preds = %fallthrough.0
   unreachable
 
 else.1:                                           ; preds = %fallthrough.0
-  %field.7 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %.ptroff.ld.0, i64 0, i32 0
-  %.field.ld.0 = load i64, i64* %field.7, align 8
+  %field.8 = getelementptr inbounds %functionDescriptor.0, %functionDescriptor.0* %.ptroff.ld.0, i64 0, i32 0
+  %.field.ld.0 = load i64, i64* %field.8, align 8
   call void @runtime.printlock(i8* nest undef)
   call void @runtime.printint(i8* nest undef, i64 %.field.ld.0)
   call void @runtime.printnl(i8* nest undef)
@@ -381,11 +382,11 @@ common.ret:                                       ; preds = %else.11, %else.8
   ret i8 %common.ret.op
 
 else.11:                                          ; preds = %else.8
-  %field.17 = getelementptr inbounds i8, i8* %key1, i64 8
-  %0 = bitcast i8* %field.17 to i32*
+  %field.18 = getelementptr inbounds i8, i8* %key1, i64 8
+  %0 = bitcast i8* %field.18 to i32*
   %.field.ld.1 = load i32, i32* %0, align 4
-  %field.18 = getelementptr inbounds i8, i8* %key2, i64 8
-  %1 = bitcast i8* %field.18 to i32*
+  %field.19 = getelementptr inbounds i8, i8* %key2, i64 8
+  %1 = bitcast i8* %field.19 to i32*
   %.field.ld.2 = load i32, i32* %1, align 4
   %icmp.14.not = icmp eq i32 %.field.ld.1, %.field.ld.2
   %. = zext i1 %icmp.14.not to i8
@@ -477,10 +478,10 @@ then.23:                                          ; preds = %else.22
   unreachable
 
 else.23:                                          ; preds = %else.22
-  %field.25 = bitcast i8* %key1 to i32*
-  %.field.ld.3 = load i32, i32* %field.25, align 4
-  %field.26 = bitcast i8* %key2 to i32*
-  %.field.ld.4 = load i32, i32* %field.26, align 4
+  %field.26 = bitcast i8* %key1 to i32*
+  %.field.ld.3 = load i32, i32* %field.26, align 4
+  %field.27 = bitcast i8* %key2 to i32*
+  %.field.ld.4 = load i32, i32* %field.27, align 4
   %icmp.28.not = icmp eq i32 %.field.ld.3, %.field.ld.4
   br i1 %icmp.28.not, label %else.26, label %common.ret
 
@@ -489,21 +490,21 @@ common.ret:                                       ; preds = %else.29, %else.26, 
   ret i8 %common.ret.op
 
 else.26:                                          ; preds = %else.23
-  %field.27 = getelementptr inbounds i8, i8* %key1, i64 8
-  %0 = bitcast i8* %field.27 to i64*
+  %field.28 = getelementptr inbounds i8, i8* %key1, i64 8
+  %0 = bitcast i8* %field.28 to i64*
   %.field.ld.5 = load i64, i64* %0, align 8
-  %field.28 = getelementptr inbounds i8, i8* %key2, i64 8
-  %1 = bitcast i8* %field.28 to i64*
+  %field.29 = getelementptr inbounds i8, i8* %key2, i64 8
+  %1 = bitcast i8* %field.29 to i64*
   %.field.ld.6 = load i64, i64* %1, align 8
   %icmp.31.not = icmp eq i64 %.field.ld.5, %.field.ld.6
   br i1 %icmp.31.not, label %else.29, label %common.ret
 
 else.29:                                          ; preds = %else.26
-  %field.29 = getelementptr inbounds i8, i8* %key1, i64 16
-  %2 = bitcast i8* %field.29 to i64*
+  %field.30 = getelementptr inbounds i8, i8* %key1, i64 16
+  %2 = bitcast i8* %field.30 to i64*
   %.field.ld.7 = load i64, i64* %2, align 8
-  %field.30 = getelementptr inbounds i8, i8* %key2, i64 16
-  %3 = bitcast i8* %field.30 to i64*
+  %field.31 = getelementptr inbounds i8, i8* %key2, i64 16
+  %3 = bitcast i8* %field.31 to i64*
   %.field.ld.8 = load i64, i64* %3, align 8
   %icmp.34.not = icmp eq i64 %.field.ld.7, %.field.ld.8
   %. = zext i1 %icmp.34.not to i8

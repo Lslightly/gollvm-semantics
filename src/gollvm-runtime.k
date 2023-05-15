@@ -42,12 +42,12 @@ module GOLLVM-RUNTIME-SYNTAX
                     //  ifaceI2T2P(RetStruct, ToTD, FromTab, FromData)
                     |ifaceI2T2P(LocalName, ValueRef, ValueRef, LocalName)
                     //  typedmemmove(TD, DstPtr, SrcPtr)
-                    |typedmemmove(ValueRef, LocalName, LocalName)
+                    |typedmemmove(ValueRef, ValueRef, ValueRef)
                     //  mapaccess(DstPtr, MapTypeValueRef, Hmap, Key)
                     |mapaccess1(LocalName, ValueRef, LocalName, ValueRef)
                     //  deferproc(pfn uintptr, arg unsafe.Pointer)
                     //  要求arg在堆上
-                    |deferproc(GlobalName, ValueRef)
+                    |deferproc(GlobalName, ParamFactor)
                     //  deferprocStack(d *_defer, pfn uintptr, arg unsafe.Pointer)
                     //  会将arg存储到d中，所以理论上arg在堆上也没有问题
                     |deferprocStack(ValueRef, GlobalName, ParamFactor)
@@ -228,26 +228,46 @@ module RUNTIME-PREPROCESS
     ... </k>
 
     rule <k>
-        VoidInvoke(@runtime.deferprocStack,
+        VoidGlobalCall(@runtime.typedmemmove,
+                        _:ParamFactor,  //  undef
+                        _:Type _:ParamAttrs TD:ValueRef, // "to" type descriptor
+                        _:Type _:ParamAttrs ToData:ValueRef, // "to" data
+                        _:Type _:ParamAttrs FromData:ValueRef // "from" data
+        )
+    =>
+        typedmemmove(TD, ToData, FromData)
+    ... </k>
+
+    rule <k>
+        VoidGlobalCall(@runtime.deferproc,
+                        _:ParamFactor,  //  undef
+                        _:ParamFactor,  //  frame *bool
+                        _:Type _:ParamAttrs Pfn:ValueRef, // pfn uintptr
+                        Arg:ParamFactor // arg unsafe.Pointer
+        )
+    =>
+        deferproc(extractGlobalName(Pfn), Arg)
+    ... </k>
+
+    rule <k>
+        VoidGlobalCall(@runtime.deferprocStack,
                         _:ParamFactor,  //  undef
                         _:Type _:ParamAttrs D:ValueRef, // d *_defer
                         _:ParamFactor,  //  frame *bool
                         _:Type _:ParamAttrs Pfn:ValueRef, // pfn uintptr
-                        Arg:ParamFactor, // arg unsafe.Pointer
-            NormalLabel:LabelString , _:LabelString)
+                        Arg:ParamFactor // arg unsafe.Pointer
+        )
     =>
-        deferprocStack(D, extractGlobalName(Pfn), Arg) ~> evalBlock(NormalLabel)
+        deferprocStack(D, extractGlobalName(Pfn), Arg)
     ... </k>
-        <lastBlock> _ => CurrBB </lastBlock>
-        <currBlock> CurrBB </currBlock>
     
     rule <k>
-        VoidInvoke (@runtime.deferreturn,
+        VoidGlobalCall(@runtime.deferreturn,
                         _:ParamFactor,  //  undef
-                        _:ParamFactor,  //  frame *bool
-            NormalLabel:LabelString, _:LabelString)
+                        _:ParamFactor  //  frame *bool
+        )
     =>
-        deferreturn() ~> evalBlock(NormalLabel)
+        deferreturn()
     ... </k>
 
 endmodule
@@ -405,6 +425,19 @@ module GOLLVM-RUNTIME
     =>
         updatePrim(RetStruct, ListItem(baseOffsetOf(FromData)) ListItem(true))
     ... </k> requires eqtype(ToTD, getTDFromTab(FromTab))
+
+    rule [Ttypedmemmove]: <k>
+        typedmemmove (TD:ValueRef, ToData:LocalName, FromData:LocalName)
+    =>
+        memcpy (ToData, FromData, SizeOfType(TD))
+    ... </k>
+
+    rule [Tdeferproc]: <k>
+        deferproc (Fn:GlobalName, _:Type _:ParamAttrs ArgName:LocalName #as Arg)
+    =>
+        pushDeferStack(defer(Fn, Arg))
+    ~>  selfCheckInHeap(addressValOf(ArgName))
+    ... </k>
 
     rule [TdeferprocStack]: <k>
         deferprocStack(D:LocalName, Fn:GlobalName, _:Type _:ParamAttrs ArgName:LocalName #as Arg)

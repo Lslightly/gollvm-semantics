@@ -65,7 +65,8 @@ Constant也放入mem中
   - 由于$\epsilon$的出现导致文法有问题，对于`%localv = type {}`会有多种预测路径
 
 
-- [ ] 需要一个cell标记当前栈使用了哪些寄存器
+- [X] 需要一个cell标记当前栈使用了哪些寄存器
+  - stackAllocs
 
 过程间分析
 
@@ -84,25 +85,31 @@ Constant也放入mem中
 - 生命期处理问题
   - [X] store时根据生命期进行处理。
     - [X] 如果dst的生命期 < src地址生命期，则出现问题。
-    - [ ] 寻找所有包含更改引用关系意图的操作
+    - [X] 寻找所有包含更改引用关系意图的操作
+      - updateObjList
+      - updateObjMap
+    - [X] 寻找所有可能改变对象位置的操作
+      - moveToHeap
   - [X] ret时将也有生命期问题。
     - 通过checkReturnLifeTime解决
   - [ ] unsafe.Pointer和uintptr会栈地址被返回被允许。不考虑unsafe和uintptr引入的不安全性。
 
-- [ ] 添加updateObjAtAddr的LifeTime检查
+- [ ] 添加updateObjList的LifeTime检查
   - 对mem中object Content部分可能进行修改的操作
     - updateObjList
-      - [ ] 添加对Content嵌套结构的检查
+      - [X] 添加对Content嵌套结构的检查
     - updateObjMap
+      - [ ] 也进行了生命期检查
 
 - [ ] nil地址未被检测
 
-- [ ] ValueRef作为Type的子类时会导致`type {}`的情况在解析时有二义性，即可以按照空结构体类型的方式进行预测，也可以按照空结构体常数的方式进行预测。修改新开一个GoLLVMType包括ValueRef和Type，将ValueRef从Type中分离出来，然后将原本Type所涉及的相关API修改为GoLLVMType类型。
+- [ ] ValueRef作为Type的子类时会导致`type {}`的情况在解析时有二义性，即可以按照空结构体类型的方式进行预测，也可以按照空结构体常数的方式进行预测。修改新开一个GoLLVMType包括ValueRef和Type，将ValueRef从Type中分离出来，然后将原本Type所涉及的部分（非所有）相关API修改为GoLLVMType类型。
   - [ ] 寻找所有Type涉及的API
 
 - [X] deferproc需要建模invoke指令
   - 先记录defer，再跳转到正常基本块
-  - [ ] 忽略异常基本块
+  - [ ] 考虑异常基本块
+
 - [ ] non-deterministic情况
 
 - [X] 在load,store的时候将全局函数名剥离出来，并设置为prim，方便invoke
@@ -114,13 +121,18 @@ Constant也放入mem中
 - [X] useNewAddr()时没有新分配空间，通过lastAddr()获取刚分配的地址
 - [X] growslice moveToHeap需要嵌套检查内部结构是否改变，优先级高
 
-- [ ] 给search的例子，需要能体现未知情况下也能进行搜索
+- [ ] 给search的例子，需要能体现未知情况下也能进行搜索，优先级高
 
 - [X] 添加deferreturn支持
   - [X] deferprocStack arg需要添加类型构成完整参数
-  - [ ] deferreturn函数传参给thunk函数时第一个参数未知是否为undef
+  - [ ] deferreturn函数传参给thunk函数时第一个参数未知是否为undef，目前假设为未知
 - [ ] mapaccess
 
 - [ ] 在未建模call函数error中添加参数对应的值
 - [ ] 递归Content检查是否有堆指向栈的问题updateObjList，例如在growslice时进行拷贝
   - [X] List情况可以检查
+
+- [ ] store指令可能需要建模成memcpy的形式，因为store指令可能存在向量指令
+- [X] deferproc的issue测例检测
+  - [ ] 添加defer参数的栈分配检查
+- [ ] invoke指令添加当前指令标识
