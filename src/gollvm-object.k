@@ -49,7 +49,7 @@ module OBJECT-SYNTAX
     syntax KItem ::= checkReturnLifeTime(BaseOffset)
                     //  检查对象内容中的地址满足不变式约束，即需要知道对象的地址和生命期
                     //  注意object需要为修改后的object，function可能返回之前的object
-    syntax Error ::= assertInHeapFail(Instruction, Object)
+    syntax Error ::= assertInHeapFail(MergedInstruction, Object)
     syntax KItem ::= selfCheckLifeTime(Address)
                     //  检查是否在堆上
                     |selfCheckInHeap(Address)

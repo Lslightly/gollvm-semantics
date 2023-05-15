@@ -442,30 +442,30 @@ module GOLLVM-TERM-INSTS
     imports TERM-INSTS-SYNTAX
     imports GOLLVM-DYN-INSTS-SYNTAX
     imports DYN-INSTS-INCLUDE
-    rule <k> evalTermInst (Term) => . ...</k>
+    rule <k> execTermInst (Term) => . ...</k>
         <errors> ... .List => ListItem(error(Term, "term inst not modeled"))</errors> [owise]
-    rule <k> evalTermInst(ret _:VoidType _:InstructionMetadatas) => storeReturnV(uninit) ...</k>
+    rule <k> execTermInst(ret _:VoidType _:InstructionMetadatas) => storeReturnV(uninit) ...</k>
     //  return local register value
     rule [TretNonVoidLocalVAddr]: <k>
-        evalTermInst(ret _:NonVoidType LV:LocalName _:InstructionMetadatas)
+        execTermInst(ret _:NonVoidType LV:LocalName _:InstructionMetadatas)
     =>
         checkReturnLifeTime(baseOffsetOf(LV)) ~> storeReturnV(baseOffsetOf(LV))
     ... </k> requires isAddr(LV)
 
     rule [TretNonVoidLocalVNonAddr]: <k>
-        evalTermInst(ret _:NonVoidType LV:LocalName _:InstructionMetadatas)
+        execTermInst(ret _:NonVoidType LV:LocalName _:InstructionMetadatas)
     =>
         storeReturnV(lookUpPrim(LV))
     ... </k> requires isPrim(LV)
 
     //  for unknown situation
     rule [TretNonVoidowise]: <k>
-        evalTermInst(ret _:NonVoidType V:ValueRef _:InstructionMetadatas)
+        execTermInst(ret _:NonVoidType V:ValueRef _:InstructionMetadatas)
     =>
         storeReturnV(V)
     ... </k> [owise]
 
-    rule [Tcondbr]: <k> evalTermInst(br _:IntType V:ValueRef, label TrueBB:LabelString, label FalseBB:LabelString _:InstructionMetadatas) => condbr (V, TrueBB, FalseBB) ...</k>
+    rule [Tcondbr]: <k> execTermInst(br _:IntType V:ValueRef, label TrueBB:LabelString, label FalseBB:LabelString _:InstructionMetadatas) => condbr (V, TrueBB, FalseBB) ...</k>
     rule [Tcondbrtrue]: <k> condbr (L:LocalName, TrueBB, _) => evalBlock(TrueBB) ...</k>
         <local2prim>
             ...
@@ -483,7 +483,7 @@ module GOLLVM-TERM-INSTS
         <lastBlock> _ => CurrBB </lastBlock>
         <currBlock> CurrBB </currBlock>
 
-    rule [Tbr]: <k> evalTermInst(br label BB:LabelString _:InstructionMetadatas) => br(BB) ...</k>
+    rule [Tbr]: <k> execTermInst(br label BB:LabelString _:InstructionMetadatas) => br(BB) ...</k>
     rule [br]: <k> br(BB:LabelString) => evalBlock(BB) ...</k>
         <lastBlock> _ => CurrBB </lastBlock>
         <currBlock> CurrBB </currBlock>

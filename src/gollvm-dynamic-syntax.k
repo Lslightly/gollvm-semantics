@@ -369,7 +369,7 @@ module GOLLVM-DYNAMIC-SYNTAX
     imports SET
     imports K-EQUAL
     imports LIST-HELPER-SYNTAX
-    syntax KItem ::= evalBlock(LabelString) | evalFunc(GlobalName) | evalInsts(List) | evalTermInst(BBTerminatorInstruction) | execInst(Instruction)
+    syntax KItem ::= evalBlock(LabelString) | evalFunc(GlobalName) | evalInsts(List) | execTermInst(BBTerminatorInstruction) | evalTermInst(BBTerminatorInstruction) | execInst(Instruction)
 
                 //  control information
     syntax Control ::= control(K, K, K, K, List)
@@ -417,7 +417,7 @@ module GOLLVM-DYNAMIC-SYNTAX
     syntax Int ::= currBase() [function]
     syntax LabelString ::= getLastBlock() [function]
 
-    syntax Instruction ::= getCurrInst() [function]
+    syntax MergedInstruction ::= Instruction | BBTerminatorInstruction | getCurrInst() [function]
 
     syntax KItem ::= warn(KItem, String) | error(KItem, String)
 

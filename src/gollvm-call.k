@@ -45,13 +45,13 @@ module CALL-PREPROCESS
     </k>
 
     rule [voidinvoke]: <k>
-        evalTermInst(invoke _:OptCallingConv _:RetAttrs void Fn:SymbolicValueRef(Args:ParamList)_:FuncAttrs to label NormalLabel:LabelString unwind label ExceptionLabel:LabelString _:InstructionMetadatas)
+        execTermInst(invoke _:OptCallingConv _:RetAttrs void Fn:SymbolicValueRef(Args:ParamList)_:FuncAttrs to label NormalLabel:LabelString unwind label ExceptionLabel:LabelString _:InstructionMetadatas)
     =>
         VoidInvoke(Fn, Args, NormalLabel, ExceptionLabel)
     ... </k>
 
     rule [nonvoidinvoke]: <k>
-        evalTermInst(L:LocalName =
+        execTermInst(L:LocalName =
             invoke _:OptCallingConv _:RetAttrs RetType:Type 
             Fn:SymbolicValueRef(Args:ParamList)_:FuncAttrs to label NormalLabel:LabelString unwind label ExceptionLabel:LabelString _:InstructionMetadatas)
     =>

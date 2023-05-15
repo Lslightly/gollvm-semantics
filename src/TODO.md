@@ -110,7 +110,7 @@ Constant也放入mem中
   - 先记录defer，再跳转到正常基本块
   - [ ] 考虑异常基本块
 
-- [ ] non-deterministic情况
+- [ ] non-deterministic情况，优先级高
 
 - [X] 在load,store的时候将全局函数名剥离出来，并设置为prim，方便invoke
   - [ ] updateObjAtLocalV对于prim不知道是否需要进行添加trimWrapperPrim的设置
@@ -134,5 +134,5 @@ Constant也放入mem中
 
 - [ ] store指令可能需要建模成memcpy的形式，因为store指令可能存在向量指令
 - [X] deferproc的issue测例检测
-  - [ ] 添加defer参数的栈分配检查
+  - [X] 添加defer参数的栈分配检查
 - [ ] invoke指令添加当前指令标识

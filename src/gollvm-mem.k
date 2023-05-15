@@ -140,8 +140,8 @@ module GOLLVM-MEM-SYNTAX
                     */
                 |   memmoveToHeapAddr(KItem, KItem) [seqstrict]
 
-    syntax Error ::= longLifeGetShorterLifeAddr(Instruction, Address, Content)
-            | retStackAddr(Instruction, Address)
+    syntax Error ::= longLifeGetShorterLifeAddr(MergedInstruction, Address, Content)
+            | retStackAddr(MergedInstruction, Address)
 
 endmodule
 

@@ -67,6 +67,9 @@ module GOLLVM-DYNAMIC
         <currInst> _ => I </currInst>
     rule <k> evalInsts (.List) => . ...</k>
 
+    rule <k> evalTermInst(I:BBTerminatorInstruction) => execTermInst(I) ... </k>
+        <currInst> _ => I </currInst>
+
     rule [[ currBase() => Base ]]
         <nextId> Base:Int </nextId>
 
@@ -74,7 +77,7 @@ module GOLLVM-DYNAMIC
         <lastBlock> LastBlock:LabelString </lastBlock>
 
     rule [[ getCurrInst () => I ]]
-        <currInst> I:Instruction </currInst>
+        <currInst> I:MergedInstruction </currInst>
 
     rule [[ isDefineFunction(Fn:GlobalName) => true ]]
         <functionName> Fn </functionName>
