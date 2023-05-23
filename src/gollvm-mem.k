@@ -140,8 +140,12 @@ module GOLLVM-MEM-SYNTAX
                     */
                 |   memmoveToHeapAddr(KItem, KItem) [seqstrict]
 
+                    //  (当前指令, 目标地址，被存储的内容)
     syntax Error ::= longLifeGetShorterLifeAddr(MergedInstruction, Address, Content)
+            | heapToStack(MergedInstruction, Address, Content)
             | retStackAddr(MergedInstruction, Address)
+            //  根据生命期以及分配位置区分不同的错误
+            | errorClassify(MergedInstruction, Address, Content) [function]
 
 endmodule
 
@@ -307,6 +311,18 @@ module GOLLVM-MEM
 
     rule [TtrimLastIdx]:
         trimLastIdx(baseOffset(Base, Front:List ListItem(_) .List)) => baseOffset(Base, Front)
+
+    rule [TerrorClassifyHeapToStack]:
+        errorClassify(I:MergedInstruction, Addr:Address, C:Content)
+    =>
+        heapToStack (I, Addr, C)
+    requires isHeapLoc(getObjLoc(searchObjAtAddr(Addr)))
+
+    rule [TerrorClassifyLongerGetShorter]:
+        errorClassify(I:MergedInstruction, Addr:Address, C:Content)
+    =>
+        longLifeGetShorterLifeAddr (I, Addr, C)
+    [owise]
 
     
 endmodule

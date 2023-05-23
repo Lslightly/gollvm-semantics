@@ -274,7 +274,7 @@ module OBJECT
     =>
         .
     ... </k>
-        <errors> ... .List => ListItem(longLifeGetShorterLifeAddr(getCurrInst(), Addr, getObjContent (searchObjAtAddr (Addr)))) </errors>
+        <errors> ... .List => ListItem(errorClassify(getCurrInst(), Addr, getObjContent (searchObjAtAddr (Addr)))) </errors>
         requires longerLifeRecursiveCheck(
             getObjLoc (searchObjAtAddr (Addr)),
             getObjLifeTime (searchObjAtAddr (Addr)),
@@ -419,7 +419,7 @@ module OBJECT
         <mem>
             Mem => Mem [ Base <- updateListOfObject (searchObjAtBase(Base), IdxList, NewVal) ]
         </mem>
-        <errors> ... .List => ListItem(longLifeGetShorterLifeAddr(getCurrInst(), Dst, NewVal)) </errors>
+        <errors> ... .List => ListItem(errorClassify(getCurrInst(), Dst, NewVal)) </errors>
         requires longerLifeRecursiveCheck(
             getObjLoc(searchObjAtBase(Base)),
             getObjLifeTime(searchObjAtBase(Base)),
@@ -436,7 +436,7 @@ module OBJECT
         <mem>
             Mem => Mem [ Base <- updateMapOfObject(searchObjAtBase (Base), Key, ValPtr) ]
         </mem>
-        <errors> ... .List => ListItem(longLifeGetShorterLifeAddr(getCurrInst(), Dst, ValPtr)) </errors>
+        <errors> ... .List => ListItem(errorClassify(getCurrInst(), Dst, ValPtr)) </errors>
         requires longerInObjLife(searchObjAtBase(Base), searchObjAtAddr(ValPtr))
     rule [TupdateObjListAtLocalV]: <k> updateObjListAtLocalV(V:LocalName, Idxs:Ints, NewVal:KItem)
     => 
@@ -491,6 +491,7 @@ module OBJECT
     copy
 */
 
+    //  TODO addOffset修改为addSize，否则可能会有无效地址的出现
     rule [TcopySplit]: <k>
         copy(DstPtr:BaseOffset, SrcPtr:BaseOffset, Size:Int)
     =>  copy(
