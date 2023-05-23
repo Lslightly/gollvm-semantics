@@ -37,5 +37,5 @@ diffTest() {
     done
 }
 
-diffTest "${llvmIRtest[@]}" llvmIR
+diffTest "${llvmIRtest[*]}" llvmIR
 diffTest "${negativeTest[*]}" negative
