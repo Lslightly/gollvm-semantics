@@ -500,14 +500,8 @@ module OBJECT
             minLargestStepOffsetTypeSize(DstPtr, SrcPtr)
             )
     ~>  copy(
-        addOffset(
-            getSizeMatchedOffset(minLargestStepOffsetTypeSize(DstPtr, SrcPtr), largestStepOffset(DstPtr)),
-            1
-        ),
-        addOffset(
-            getSizeMatchedOffset(minLargestStepOffsetTypeSize(DstPtr, SrcPtr), largestStepOffset(SrcPtr)),
-            1
-        ),
+        addSize(largestStepOffset(DstPtr), minLargestStepOffsetTypeSize(DstPtr, SrcPtr)),
+        addSize(largestStepOffset(SrcPtr), minLargestStepOffsetTypeSize(DstPtr, SrcPtr)),
         Size -Int minLargestStepOffsetTypeSize(DstPtr, SrcPtr))
     ...</k>
     requires Size >Int minLargestStepOffsetTypeSize(DstPtr, SrcPtr)
