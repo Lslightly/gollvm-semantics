@@ -18,5 +18,5 @@ krun ../test/preprocessed.min_level.ll --definition ./gollvm-semantics-kompiled 
 
 1. use [gollvm](https://go.googlesource.com/gollvm/)'s `-emit-llvm -S` option to generate the llvm ir of golang source code.
 2. use `utils/IRpreprocess/IRpreprocess.go` to preprocess the llvm ir to generate parse tree(The parser, i.e. the gollvm-syntax.k, is modified from [K-LLVM](https://github.com/liyili2/llvm-semantics-1) which is previously built on older K whose version is possibly 3.6. It's not well tested.)
-3. use `krun` to run the semantics of preprocessed llvm ir. it will give the memory state in the `<mem></mem>` cell of configuration and check whether the memory operation violate the [escape analysis invariant](https://github.com/golang/go/blob/release-branch.go1.17/src/cmd/compile/internal/escape/escape.go#L25). Static program analysis might be more suitable for this work.
+3. use `krun` to run the semantics of preprocessed llvm ir. it will give the memory state in the `<mem></mem>` cell of configuration and check whether the memory operation violate the [escape analysis invariant](https://github.com/golang/go/blob/release-branch.go1.17/src/cmd/compile/internal/escape/escape.go#L25). Static program analysis might be more suitable for this check.
 
