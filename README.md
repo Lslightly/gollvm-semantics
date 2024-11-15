@@ -1,4 +1,4 @@
-# GoLLVM semantic
+# GoLLVM semantics
 
 > a not well tested toy project.
 
